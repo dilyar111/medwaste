@@ -9,7 +9,11 @@ export default function Sidebar() {
         <Link to="/">Dashboard</Link>
         <Link to="/containers">Containers</Link>
         <Link to="/alerts">Alerts</Link>
+        <Link to="/map">Map</Link>
         <Link to="/reports">Reports</Link>
+        <Link to="/driver-registration">Drivers</Link>
+        <Link to="/routes-history">Route History</Link>
+        <Link to="/profile">Profile</Link>
       </nav>
     </div>
   );
