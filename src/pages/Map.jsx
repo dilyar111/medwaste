@@ -17,7 +17,7 @@ const Map = () => {
 
   return (
     <div style={{ height: '100%', width: '100%' }}>
-      <MapContainer center={position} zoom={13} style={{ height: '100%', width: '100%' }}>
+      <MapContainer center={position} zoom={13} className="leaflet-container" style={{ height: '100%', width: '100%' }}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
