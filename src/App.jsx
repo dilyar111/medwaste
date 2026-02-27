@@ -1,5 +1,6 @@
 import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import PrivateRoute from "./components/Privateroute";
 
 import Dashboard from "./pages/Dashboard";
 import Containers from "./pages/Containers";
@@ -11,7 +12,7 @@ import DriverRegistration from "./pages/DriverRegistration";
 import RouteHistory from "./pages/RouteHistory";
 import Profile from "./pages/Profile";
 
-export default function App() {
+function App() {
   return (
     <BrowserRouter>
       <div className="flex h-screen bg-gray-100">
@@ -32,3 +33,41 @@ export default function App() {
     </BrowserRouter>
   );
 }
+
+
+function AppLog() {
+  const isLoggedIn = sessionStorage.getItem("mw_logged_in") === "true";
+
+  return (
+    <BrowserRouter>
+      <Routes>
+
+        {/* Root: send logged-in users to dashboard, others to login.html */}
+        <Route
+          path="/"
+          element={
+            isLoggedIn
+              ? <Navigate to="/dashboard" replace />
+              : <Navigate to="/login.html" replace />   // HTML page outside React
+          }
+        />
+
+        {/* Protected dashboard */}
+        <Route
+          path="/dashboard"
+          element={
+            <PrivateRoute>
+              <Dashboard />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Add more protected routes the same way */}
+        {/* <Route path="/bins" element={<PrivateRoute><Bins /></PrivateRoute>} /> */}
+
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+export default AppLog;
