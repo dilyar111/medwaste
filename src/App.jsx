@@ -1,10 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
-// Импорты компонентов
-import PrivateRoute from "./components/Privateroute";
-import Layout from "./components/Layout"; 
-
 // Импорты страниц
 import Home from "./pages/Home";
 import Login from "./pages/Auth/Login";
@@ -15,42 +11,43 @@ import MapPage from "./pages/MapPage";
 import Alerts from "./pages/Alerts";
 import Reports from "./pages/Reports";
 import DriverRegistration from "./pages/DriverRegistration";
-import RouteHistory from "./pages/RouteHistory";
+import RoutesHistory from "./pages/RouteHistory";
 import Profile from "./pages/Profile";
 
-function App() {
-  // Достаем статус авторизации прямо здесь
-  const isLoggedIn = sessionStorage.getItem("mw_logged_in") === "true";
+// Импорты компонентов
+import Layout from "./components/Layout"; 
+import PrivateRoute from "./components/Privateroute";
 
+function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* --- ПУБЛИЧНЫЕ РОУТЫ (Без Сайдбара) --- */}
+        {/* 1. ПУБЛИЧНЫЕ СТРАНИЦЫ (Без сайдбара) */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* --- ПРИВАТНЫЕ РОУТЫ (Внутри Layout с Сайдбаром) --- */}
-        <Route 
-          path="/dashboard" 
-          element={
-            <PrivateRoute>
-              <Layout />
-            </PrivateRoute>
-          }
-        >
-          {/* Все эти страницы отрендерятся внутри Outlet в Layout */}
-          <Route index element={<Dashboard />} />
+        {/* 2. ПРИВАТНЫЕ СТРАНИЦЫ (Внутри Layout с Сайдбаром) */}
+        {/* Все пути ниже будут начинаться с /dashboard/ */}
+        <Route path="/dashboard" element={
+          <PrivateRoute>
+            <Layout />
+          </PrivateRoute>
+        }>
+          {/* Это страница по умолчанию для /dashboard */}
+          <Route index element={<Dashboard />} /> 
+          
+          {/* Эти страницы будут открываться по адресу /dashboard/containers и т.д. */}
           <Route path="containers" element={<Containers />} />
           <Route path="map" element={<MapPage />} />
           <Route path="alerts" element={<Alerts />} />
           <Route path="reports" element={<Reports />} />
           <Route path="driver-registration" element={<DriverRegistration />} />
-          <Route path="routes-history" element={<RouteHistory />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="routes-history" element={<RoutesHistory />} />
         </Route>
 
-        {/* Если зашли не туда — кидаем на главную */}
+        {/* Редирект, если путь не найден */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
