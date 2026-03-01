@@ -4,11 +4,11 @@ import Sidebar from "./Sidebar";
 
 const Layout = () => {
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div style={{ display: "flex", minHeight: "100vh", background: "#f0f4f8" }}>
       <Sidebar />
-      <div className="flex-1 p-6 overflow-auto">
-        <Outlet /> {/* Это место, где меняется контент страниц */}
-      </div>
+      <main style={{ flex: 1, overflowY: "auto", minWidth: 0 }}>
+        <Outlet />
+      </main>
     </div>
   );
 };
