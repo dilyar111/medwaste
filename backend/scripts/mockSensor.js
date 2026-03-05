@@ -1,28 +1,43 @@
 const axios = require('axios');
 
 const binIds = ["MED-001", "MED-002", "MED-003", "MED-004", "MED-005"];
-const binId = binIds[0];
-let currentFullness = 10; 
 
+// Храним текущий уровень для каждого бака
+let levels = {
+    "MED-001": 10,
+    "MED-002": 25,
+    "MED-003": 40,
+    "MED-004": 5,
+    "MED-005": 60
+};
 
-console.log("🚀 Датчик запущен. Имитация наполнения...");
+console.log("🚀 Датчики запущены для 5 контейнеров...");
 
 setInterval(async () => {
-    // Имитируем рост на 1-3% за шаг
-    currentFullness += Math.random() * 3;
-    
-    if (currentFullness > 100) currentFullness = 10; // Сброс при переполнении
+    // ВАЖНО: Используем for...of, чтобы id был определен для каждой итерации
+    for (const id of binIds) {
+        
+        // 1. Имитируем рост
+        levels[id] += Math.random() * 3;
+        
+        // 2. Если бак полон, сбрасываем (имитация очистки)
+        if (levels[id] > 100) {
+            levels[id] = Math.random() * 10;
+            console.log(`♻️ Контейнер ${id} был очищен`);
+        }
 
-    try {
-        // Отправляем данные на наш Node.js сервер (который мы допишем)
-        await axios.post('http://127.0.0.1:5000/api/telemetry', {
-            binId: binId,
-            fullness: Number(currentFullness.toFixed(2)),
-            timestamp: new Date().toISOString()
-        });
-        console.log(`📡 Данные отправлены: ${binIds} -> ${currentFullness.toFixed(2)}%`);
-    } catch (err) {
-        // Это покажет реальную причину (Timeout, Connection Refused и т.д.)
-        console.error("❌ Ошибка:", err.code || err.message);
+        try {
+            // 3. Отправляем данные
+            await axios.post('http://127.0.0.1:5000/api/telemetry', {
+                binId: id,
+                fullness: Number(levels[id].toFixed(2)),
+                timestamp: new Date().toISOString()
+            });
+            
+            console.log(`📡 [${id}] -> ${levels[id].toFixed(2)}%`);
+        } catch (err) {
+            console.error(`❌ Ошибка отправки для ${id}:`, err.message);
+        }
     }
-}, 5000); // Каждые 5 секунд
+    console.log("--- Пауза 5 секунд ---");
+}, 5000);

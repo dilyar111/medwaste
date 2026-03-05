@@ -137,6 +137,23 @@ app.get('/api/predict/:binId', async (req, res) => {
   }
 });
 
+app.get('/api/alerts', async (req, res) => {
+  try {
+    const criticalBins = await History.aggregate([
+      { $sort: { timestamp: -1 } },
+      { $group: { 
+          _id: "$binId", 
+          fullness: { $first: "$fullness" }, 
+          timestamp: { $first: "$timestamp" } 
+      }},
+      { $match: { fullness: { $gt: 90 } } } // Фильтр: только те, что > 90%
+    ]);
+    res.json(criticalBins);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── Start ─────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));

@@ -365,14 +365,7 @@ function Dashboard() {
     navigate("/login");
   };
 
-    const fetchAIData = async () => {
-    try {
-      const res = await axios.get("http://localhost:5000/api/predict/MED-001");
-      setRealPrediction(res.data);
-    } catch (err) {
-      console.error("AI Error:", err);
-    }
-  };
+  
 
 
 useEffect(() => {
@@ -397,40 +390,40 @@ useEffect(() => {
 
 
 
-  const predictions = [
-    { 
-      id: "MED-001 (LIVE)", 
-      fillDate: realPrediction ? formatTime(realPrediction.target_timestamp) : "Loading...", 
-      collectDate: "Before overflow", 
-      confidence: realPrediction ? `${realPrediction.confidence}%` : "0%" 
-    },
-    { 
-      id: "MED-002 (LIVE)", 
-      fillDate: realPrediction ? formatTime(realPrediction.target_timestamp) : "Loading...", 
-      collectDate: "Before overflow", 
-      confidence: realPrediction ? `${realPrediction.confidence}%` : "0%" 
-    },
-    { 
-      id: "MED-003 (LIVE)", 
-      fillDate: realPrediction ? formatTime(realPrediction.target_timestamp) : "Loading...", 
-      collectDate: "Before overflow", 
-      confidence: realPrediction ? `${realPrediction.confidence}%` : "0%" 
-    },
-    { 
-      id: "MED-004 (LIVE)", 
-      fillDate: realPrediction ? formatTime(realPrediction.target_timestamp) : "Loading...", 
-      collectDate: "Before overflow", 
-      confidence: realPrediction ? `${realPrediction.confidence}%` : "0%" 
-    },
-    { 
-      id: "MED-005 (LIVE)", 
-      fillDate: realPrediction ? formatTime(realPrediction.target_timestamp) : "Loading...", 
-      collectDate: "Before overflow", 
-      confidence: realPrediction ? `${realPrediction.confidence}%` : "0%" 
-    },
-    
-    
-  ];
+// Внутри компонента Dashboard
+const [allPredictions, setAllPredictions] = useState({});
+
+const fetchAIData = async () => {
+  const binIds = ["MED-001", "MED-002", "MED-003", "MED-004", "MED-005"];
+  
+  // Запускаем запросы для всех баков одновременно
+  const requests = binIds.map(id => 
+    axios.get(`http://localhost:5000/api/predict/${id}`)
+      .then(res => ({ id, data: res.data }))
+      .catch(() => ({ id, data: null }))
+  );
+
+  const results = await Promise.all(requests);
+  
+  // Превращаем массив результатов в объект { "MED-001": {...}, "MED-002": {...} }
+  const newPredictions = {};
+  results.forEach(res => {
+    if (res.data) newPredictions[res.id] = res.data;
+  });
+
+  setAllPredictions(newPredictions);
+};
+
+// Теперь переписываем массив predictions для рендера
+const predictions = ["MED-001", "MED-002", "MED-003", "MED-004", "MED-005"].map(id => {
+  const pred = allPredictions[id];
+  return {
+    id: `${id} (LIVE)`,
+    fillDate: pred ? formatTime(pred.target_timestamp) : "Loading...",
+    collectDate: "Before overflow",
+    confidence: pred ? `${pred.confidence}%` : "0%"
+  };
+});
 
   if (!user) return null;
 
