@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 // ── Inline styles / design tokens ─────────────────────────────────────────────
 const css = `
@@ -288,6 +289,8 @@ const css = `
   }
 `;
 
+
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 function StatCard({ title, value, delta, deltaType = "neu", subtitle, forecast }) {
   return (
@@ -348,6 +351,7 @@ const barHeights = [30, 55, 45, 70, 60, 80, 51, 65, 40, 58, 72, 51];
 function Dashboard() {
   const navigate = useNavigate();
   const [user, setUser]       = useState(null);
+  const [realPrediction, setRealPrediction] = useState(null);
   const [period, setPeriod]   = useState("Month");
   const [settings, setSettings] = useState({
     autoRefresh: true,
@@ -356,36 +360,79 @@ function Dashboard() {
     compact: false,
   });
 
-  useEffect(() => {
+    const handleLogout = () => {
+    sessionStorage.clear();
+    navigate("/login");
+  };
+
+    const fetchAIData = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/predict/MED-001");
+      setRealPrediction(res.data);
+    } catch (err) {
+      console.error("AI Error:", err);
+    }
+  };
+
+
+useEffect(() => {
     const loggedIn = sessionStorage.getItem("mw_logged_in");
-    const email    = sessionStorage.getItem("mw_user");
+    const email = sessionStorage.getItem("mw_user");
     if (loggedIn !== "true" || !email) {
-      window.location.href = "/login.html";
+      navigate("/login");
       return;
     }
     setUser(email);
-  }, []);
+    fetchAIData();
+    const interval = setInterval(fetchAIData, 10000);
+    return () => clearInterval(interval);
+  }, [navigate]);
 
-  const handleLogout = () => {
-    sessionStorage.removeItem("mw_logged_in");
-    sessionStorage.removeItem("mw_user");
-    window.location.href = "/login.html";
-  };
 
-  const toggleSetting = (key) =>
+ const toggleSetting = (key) =>
     setSettings((s) => ({ ...s, [key]: !s[key] }));
 
-  const username = user ? user.split("@")[0] : "";
+  const username = user ? user.split("@")[0] : "User";
+  const formatTime = (ts) => ts ? new Date(ts * 1000).toLocaleTimeString() : "Calculating...";
 
-  if (!user) return null;
+
 
   const predictions = [
-    { id: "MED-001", fillDate: "Apr 12, 2026", collectDate: "Apr 10, 2026", confidence: "78%" },
-    { id: "MED-002", fillDate: "Apr 14, 2026", collectDate: "Apr 12, 2026", confidence: "82%" },
-    { id: "MED-003", fillDate: "Apr 16, 2026", collectDate: "Apr 14, 2026", confidence: "91%" },
-    { id: "MED-004", fillDate: "Apr 18, 2026", collectDate: "Apr 16, 2026", confidence: "67%" },
-    { id: "MED-005", fillDate: "Apr 20, 2026", collectDate: "Apr 18, 2026", confidence: "74%" },
+    { 
+      id: "MED-001 (LIVE)", 
+      fillDate: realPrediction ? formatTime(realPrediction.target_timestamp) : "Loading...", 
+      collectDate: "Before overflow", 
+      confidence: realPrediction ? `${realPrediction.confidence}%` : "0%" 
+    },
+    { 
+      id: "MED-002 (LIVE)", 
+      fillDate: realPrediction ? formatTime(realPrediction.target_timestamp) : "Loading...", 
+      collectDate: "Before overflow", 
+      confidence: realPrediction ? `${realPrediction.confidence}%` : "0%" 
+    },
+    { 
+      id: "MED-003 (LIVE)", 
+      fillDate: realPrediction ? formatTime(realPrediction.target_timestamp) : "Loading...", 
+      collectDate: "Before overflow", 
+      confidence: realPrediction ? `${realPrediction.confidence}%` : "0%" 
+    },
+    { 
+      id: "MED-004 (LIVE)", 
+      fillDate: realPrediction ? formatTime(realPrediction.target_timestamp) : "Loading...", 
+      collectDate: "Before overflow", 
+      confidence: realPrediction ? `${realPrediction.confidence}%` : "0%" 
+    },
+    { 
+      id: "MED-005 (LIVE)", 
+      fillDate: realPrediction ? formatTime(realPrediction.target_timestamp) : "Loading...", 
+      collectDate: "Before overflow", 
+      confidence: realPrediction ? `${realPrediction.confidence}%` : "0%" 
+    },
+    
+    
   ];
+
+  if (!user) return null;
 
   return (
     <>
