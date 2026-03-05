@@ -353,6 +353,7 @@ function Dashboard() {
   const [user, setUser]       = useState(null);
   const [realPrediction, setRealPrediction] = useState(null);
   const [period, setPeriod]   = useState("Month");
+  const [alerts, setAlerts] = useState([]);
   const [settings, setSettings] = useState({
     autoRefresh: true,
     aiPredictions: true,
@@ -393,25 +394,31 @@ useEffect(() => {
 // Внутри компонента Dashboard
 const [allPredictions, setAllPredictions] = useState({});
 
+
 const fetchAIData = async () => {
   const binIds = ["MED-001", "MED-002", "MED-003", "MED-004", "MED-005"];
   
-  // Запускаем запросы для всех баков одновременно
-  const requests = binIds.map(id => 
-    axios.get(`http://localhost:5000/api/predict/${id}`)
-      .then(res => ({ id, data: res.data }))
-      .catch(() => ({ id, data: null }))
-  );
+  try {
+    // 1. Загружаем предсказания для каждого бака
+    const requests = binIds.map(id => 
+      axios.get(`http://localhost:5000/api/predict/${id}`)
+        .then(res => ({ id, data: res.data }))
+        .catch(() => ({ id, data: null }))
+    );
+    const results = await Promise.all(requests);
+    const newPredictions = {};
+    results.forEach(res => {
+      if (res.data) newPredictions[res.id] = res.data;
+    });
+    setAllPredictions(newPredictions);
 
-  const results = await Promise.all(requests);
-  
-  // Превращаем массив результатов в объект { "MED-001": {...}, "MED-002": {...} }
-  const newPredictions = {};
-  results.forEach(res => {
-    if (res.data) newPredictions[res.id] = res.data;
-  });
+    const alertsRes = await axios.get('http://localhost:5000/api/alerts');
+    // Фильтруем только нерешенные алерты (если нужно)
+    setAlerts(alertsRes.data); 
 
-  setAllPredictions(newPredictions);
+  } catch (error) {
+    console.error("Error fetching dashboard data:", error);
+  }
 };
 
 // Теперь переписываем массив predictions для рендера
@@ -581,17 +588,41 @@ const predictions = ["MED-001", "MED-002", "MED-003", "MED-004", "MED-005"].map(
           </div>
 
           {/* ── NEEDS ATTENTION + SYSTEM METRICS ── */}
-          <div className="db-three-col">
-            <div className="db-card">
-              <div className="db-card-header">
-                <span className="db-card-title">Needs Attention</span>
-                <span className="db-card-link">View all →</span>
-              </div>
-              <div className="db-attention-empty">
-                <div className="db-attention-icon"></div>
-                All bins are normal — no bins require attention soon
-              </div>
-            </div>
+         <div className="db-card">
+           <div className="db-card-header">
+             <span className="db-card-title">Needs Attention</span>
+             <span className="db-card-link">View all →</span>
+           </div>
+  
+           {/* Если алертов нет — показываем иконку и надпись "Все ок" */}
+           {alerts.length === 0 ? (
+             <div className="db-attention-empty">
+               <div className="db-attention-icon">✅</div> 
+               <p>All bins are normal — no bins require attention soon</p>
+             </div>
+           ) : (
+    /* Если алерты есть — выводим их списком без центрирования "пустого" блока */
+             <div className="db-attention-list" style={{ padding: '15px', maxHeight: '300px', overflowY: 'auto' }}>
+               {alerts.map(alert => (
+                 <div key={alert._id} className="alert-item-active" style={{
+                   backgroundColor: alert.severity === 'critical' ? '#fff5f5' : '#fffbeb',
+                   borderLeft: `4px solid ${alert.severity === 'critical' ? '#f87171' : '#fbbf24'}`,
+                   padding: '10px',
+                   marginBottom: '8px',
+                   borderRadius: '4px',
+                   color: alert.severity === 'critical' ? '#991b1b' : '#92400e'
+                 }}>
+                 <div style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>⚠️ {alert.title}</div>
+                 <div style={{ fontSize: '0.75rem', marginTop: '4px' }}>{alert.message}</div>
+                 <div style={{ fontSize: '0.65rem', opacity: 0.7, marginTop: '5px' }}>
+                   {new Date(alert.timestamp).toLocaleTimeString()}
+                 </div>   
+               </div>
+             ))}
+           </div>
+           )}
+         
+ 
 
             <div className="db-card">
               <div className="db-card-header">

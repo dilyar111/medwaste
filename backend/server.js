@@ -2,7 +2,9 @@ const express   = require('express');
 const cors      = require('cors');
 const mongoose  = require('mongoose');
 const axios     = require('axios');
+const nodemailer = require('nodemailer');
 require('dotenv').config();
+const Alert = require('./models/Alert');
 
 const app = express();
 
@@ -51,6 +53,26 @@ app.post('/api/telemetry', async (req, res) => {
     });
 
     const saved = await newEntry.save();
+
+    if (fullness >= 80) {
+        sendEmailAlert(binId, fullness);
+      await Alert.create({
+         severity: "critical", type: "fullness",
+         title: `Container ${binId} Almost Full`,
+         message: `${binId} reached ${fullness.toFixed(1)}% — immediate collection required.`,
+         containerId: binId,
+       });
+     } else if (fullness >= 60) {
+       await Alert.create({
+         severity: "warning", type: "fullness",
+         title: `High Fill Level — ${binId}`,
+         message: `${binId} is at ${fullness.toFixed(1)}%. Schedule pickup within 24h.`,
+         containerId: binId,
+        });
+     }
+
+
+
     console.log("✅ Saved to MongoDB:", saved._id);
     res.status(200).json({ ok: true, id: saved._id });
 
@@ -137,22 +159,68 @@ app.get('/api/predict/:binId', async (req, res) => {
   }
 });
 
+
+// GET all alerts
 app.get('/api/alerts', async (req, res) => {
   try {
-    const criticalBins = await History.aggregate([
-      { $sort: { timestamp: -1 } },
-      { $group: { 
-          _id: "$binId", 
-          fullness: { $first: "$fullness" }, 
-          timestamp: { $first: "$timestamp" } 
-      }},
-      { $match: { fullness: { $gt: 90 } } } // Фильтр: только те, что > 90%
-    ]);
-    res.json(criticalBins);
+    const alerts = await Alert.find().sort({ timestamp: -1 }).limit(100);
+    res.json(alerts);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+// PATCH resolve
+app.patch('/api/alerts/:id/resolve', async (req, res) => {
+  try {
+    const alert = await Alert.findByIdAndUpdate(req.params.id, { resolved: true }, { new: true });
+    if (!alert) return res.status(404).json({ error: "Not found" });
+    res.json(alert);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE dismiss
+app.delete('/api/alerts/:id', async (req, res) => {
+  try {
+    await Alert.findByIdAndDelete(req.params.id);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
+  }
+});
+
+// 2. Универсальная функция отправки
+const sendEmailAlert = (binId, fullness) => {
+  const mailOptions = {
+    from: `"MedWaste AI" <${process.env.EMAIL_USER}>`,
+    to: process.env.EMAIL_TO,
+    subject: `🚨 Critical Alert: Container ${binId}`,
+    html: `
+      <div style="font-family: sans-serif; border: 2px solid #e11d48; padding: 20px; border-radius: 10px;">
+        <h2 style="color: #e11d48;">Overfill Detected</h2>
+        <p>Container <b>${binId}</b> is at <b>${fullness}%</b> capacity.</p>
+        <p>Immediate collection is required to maintain safety standards.</p>
+        <hr style="border: 0.5px solid #eee;">
+        <p style="font-size: 0.8rem; color: #666;">MedWaste Smart Monitoring System</p>
+      </div>
+    `
+  };
+
+transporter.sendMail(mailOptions, (error, info) => {
+    if (error) console.log("❌ Email error:", error.message);
+    else console.log("📧 Email sent successfully:", info.response);
+  });
+};
 
 // ── Start ─────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
