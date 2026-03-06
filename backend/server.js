@@ -3,13 +3,20 @@ const cors      = require('cors');
 const mongoose  = require('mongoose');
 const axios     = require('axios');
 const nodemailer = require('nodemailer');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const Alert = require('./models/Alert');
+const User = require('./models/User');
 
 const app = express();
 
 // ── Middlewares ───────────────────────────────────────────────
-app.use(cors());
+app.use(cors({
+  origin: '*', 
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 // ── MongoDB ───────────────────────────────────────────────────
@@ -25,6 +32,56 @@ const historySchema = new mongoose.Schema({
 }, { strict: false });
 
 const History = mongoose.model('HistoryNew', historySchema);
+
+
+// ── REGISTER ──
+app.post('/api/auth/register', async (req, res) => {
+    console.log("📥 Register attempt:", req.body);
+  try {
+    const { email, password } = req.body;
+
+    // 1. Проверяем, нет ли уже такого юзера
+    const existing = await User.findOne({ email });
+    if (existing) return res.status(400).json({ error: "User already exists" });
+
+    // 2. Шифруем пароль
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 3. Сохраняем
+    const newUser = new User({ email, password: hashedPassword });
+    await newUser.save();
+
+    res.status(201).json({ ok: true, message: "User created" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── LOGIN ──
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // 1. Ищем юзера
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ error: "User not found" });
+
+    // 2. Сверяем пароль
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
+
+    // 3. Создаем токен (действует 24 часа)
+    const token = jwt.sign(
+      { userId: user._id, email: user.email },
+      process.env.JWT_SECRET || 'supersecretkey', 
+      { expiresIn: '24h' }
+    );
+
+    res.json({ token, email: user.email });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // ── Routes ────────────────────────────────────────────────────
 

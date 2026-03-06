@@ -39,5 +39,5 @@ setInterval(async () => {
             console.error(`❌ Ошибка отправки для ${id}:`, err.message);
         }
     }
-    console.log("--- Пауза 5 секунд ---");
-}, 5000);
+    console.log("--- Пауза 60 секунд ---");
+}, 60000);

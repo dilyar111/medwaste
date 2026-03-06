@@ -1,21 +1,32 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import axios from 'axios';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (email && password.length >= 4) {
-      sessionStorage.setItem('mw_logged_in', 'true');
-      sessionStorage.setItem('mw_user', email);
-      navigate('/dashboard'); // Исправил путь на /dashboard
-    } else {
-      alert('Введите корректные данные (пароль от 4 символов)');
+  const handleLogin = async (e) => {
+  e.preventDefault();
+  try {
+    const res = await axios.post('http://localhost:5000/api/auth/login', {
+      email: email, // твои переменные из useState
+      password: password
+    });
+
+    if (res.data.token) {
+      // Сохраняем данные в сессию
+      sessionStorage.setItem("mw_logged_in", "true");
+      sessionStorage.setItem("mw_user", res.data.email);
+      sessionStorage.setItem("mw_token", res.data.token);
+      
+      navigate("/dashboard");
     }
-  };
+  } catch (err) {
+    alert(err.response?.data?.error || "Login failed");
+  }
+};
 
   return (
     // Обертка auth-page дает темный фон и центрирование из твоего CSS
@@ -27,7 +38,7 @@ const Login = () => {
             <p>Please log in to your account to continue.</p>
           </div>
           
-          <form className="auth-form" onSubmit={handleSubmit}>
+          <form className="auth-form" onSubmit={handleLogin}>
             <div className="form-group">
               <label>Email</label>
               <input 
