@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import axios from "axios";
 
 const css = `
   @import url('https://cdn.jsdelivr.net/npm/geist@1.3.0/dist/fonts/geist-sans/style.css');
@@ -113,6 +114,8 @@ const css = `
   }
 `;
 
+
+
 function DriverRegistration() {
   const [form, setForm] = useState({
     licenseNumber:     "",
@@ -127,15 +130,45 @@ function DriverRegistration() {
     emergencyRelation: "",
   });
   const [submitted, setSubmitted] = useState(false);
+  const [dateError, setDateError] = useState("");
 
-  const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+  const { name, value } = e.target;
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Driver Registration:", form);
-    setSubmitted(true);
-  };
+  if (name === "licenseExpiry") {
+    const selectedDate = new Date(value);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Сбрасываем время для чистого сравнения дат
+
+    if (selectedDate < today) {
+      setDateError("License has already expired or date is invalid!");
+    } else {
+      setDateError("");
+    }
+  }
+
+  setForm({ ...form, [name]: value });
+};
+
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  const userEmail = sessionStorage.getItem("mw_user"); // Получаем email текущего юзера
+
+  try {
+    const response = await axios.post("http://localhost:5000/api/drivers/register", {
+      ...form,
+      email: userEmail
+    });
+
+    if (response.status === 201) {
+      setSubmitted(true);
+    }
+  } catch (error) {
+    console.error("Registration error:", error);
+    alert("Ошибка при регистрации: " + (error.response?.data?.message || error.message));
+  }
+};
 
   return (
     <>
@@ -151,13 +184,38 @@ function DriverRegistration() {
 
           {submitted ? (
             <div className="dr-card">
-              <div className="dr-success">
-                <div className="dr-success-icon"></div>
-                <h2>Application submitted!</h2>
-                <p>An administrator will review your information.<br />You'll receive an email notification about your application status.</p>
-              </div>
+             <div className="dr-success">
+               <div className="dr-success-icon" style={{ fontSize: '4rem' }}>⏳</div>
+               <h2 style={{ color: '#1a2035' }}>Application under consideration</h2>
+               <p style={{ maxWidth: '400px', margin: '0 auto', lineHeight: '1.6' }}>
+                  Your data has been successfully submitted. Account status:
+                   <span style={{ 
+                     background: '#FFFBEB', 
+                     color: '#B45309', 
+                     padding: '2px 8px', 
+                     borderRadius: '12px', 
+                     fontWeight: 'bold',
+                     marginLeft: '5px' 
+                  }}>
+                     PENDING
+                   </span>
+                 </p>
+                <p style={{ marginTop: '20px', fontSize: '0.85rem' }}>
+                   The administrator verifies your license and vehicle information.
+                   This usually takes up to 24 hours.
+                 </p>
+                 <button 
+                   className="db-btn db-btn-primary" 
+                   style={{ marginTop: '24px' }}
+                   onClick={() => navigate('/dashboard')}
+                 >
+                   Return to the control panel
+                 </button>
+               </div>
             </div>
-          ) : (
+           ) : (
+
+
             <form onSubmit={handleSubmit}>
 
               {/* LICENSE INFO */}
@@ -174,10 +232,21 @@ function DriverRegistration() {
                         value={form.licenseNumber} onChange={handleChange} />
                     </div>
                     <div className="dr-field">
-                      <label>License Expiry Date <span>*</span></label>
-                      <input type="date" name="licenseExpiry" required
-                        value={form.licenseExpiry} onChange={handleChange} />
-                    </div>
+                     <label>License Expiry Date <span>*</span></label>
+                     <input 
+                       type="date" 
+                       name="licenseExpiry" 
+                       required
+                       style={{ borderColor: dateError ? '#EF4444' : '#e4e9f0' }}
+                       value={form.licenseExpiry} 
+                       onChange={handleChange} 
+                     />
+                     {dateError && (
+                       <span style={{ color: '#EF4444', fontSize: '0.75rem', marginTop: '4px' }}>
+                         {dateError}
+                       </span>
+                     )}
+                   </div>
                     <div className="dr-field dr-col-2">
                       <label>Medical Company <span>*</span></label>
                       <select name="company" required value={form.company} onChange={handleChange}>
@@ -252,9 +321,14 @@ function DriverRegistration() {
 
               {/* SUBMIT */}
               <div className="dr-submit-card">
-                <button type="submit" className="dr-submit-btn">
-                   Submit Application
-                </button>
+              <button 
+                 type="submit" 
+                 className="dr-submit-btn" 
+                 disabled={!!dateError}
+                 style={{ opacity: dateError ? 0.6 : 1, cursor: dateError ? 'not-allowed' : 'pointer' }}
+              >
+                 Submit Application
+              </button>
                 <div className="dr-submit-note">
                   <span className="dr-note-icon">ℹ</span>
                   <span>After submitting, an administrator will review the provided information. You will receive an email notification about the status of your application.</span>

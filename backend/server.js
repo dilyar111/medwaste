@@ -8,7 +8,8 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 const Alert = require('./models/Alert');
 const User = require('./models/User');
-
+const Driver = require('./models/Driver');
+const Notification = require('./models/Notification');
 const app = express();
 
 // ── Middlewares ───────────────────────────────────────────────
@@ -48,7 +49,11 @@ app.post('/api/auth/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 3. Сохраняем
-    const newUser = new User({ email, password: hashedPassword });
+    const newUser = new User({ 
+      email, 
+      password: hashedPassword, 
+      role: 'user' //  все новые юзеры — обычные пользователи
+    });
     await newUser.save();
 
     res.status(201).json({ ok: true, message: "User created" });
@@ -61,33 +66,57 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // 1. Ищем юзера
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ error: "User not found" });
 
-    // 2. Сверяем пароль
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
 
-    // 3. Создаем токен (действует 24 часа)
     const token = jwt.sign(
-      { userId: user._id, email: user.email },
+      { userId: user._id, email: user.email, role: user.role }, // ТУТ ДОЛЖНА БЫТЬ РОЛЬ
       process.env.JWT_SECRET || 'supersecretkey', 
       { expiresIn: '24h' }
     );
 
-    res.json({ token, email: user.email });
+    // Отправляем роль и токен фронтенду
+    res.json({ token, email: user.email, role: user.role }); 
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+
+const isAdmin = (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ message: "No token" });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'supersecretkey');
+    
+    // ДОБАВЬ ЭТОТ LOG, чтобы увидеть правду в терминале:
+    console.log("DEBUG: Role from token is ->", decoded.role);
+
+    if (decoded.role !== 'admin') {
+      return res.status(403).json({ message: "Access denied. Admins only." });
+    }
+    
+    req.user = decoded;
+    next();
+  } catch (err) {
+    res.status(401).json({ message: "Invalid token" });
+  }
+};
 
 // ── Routes ────────────────────────────────────────────────────
 
 // Health check
 app.get('/', (req, res) => {
   res.send("MedWaste API is running...");
+});
+
+app.get('/api/notifications', async (req, res) => {
+  // Просто возвращаем пустой массив, чтобы Dashboard не ругался
+  res.json([]);
 });
 
 // ⚠️ IMPORTANT: specific route BEFORE parameterized route
@@ -127,8 +156,6 @@ app.post('/api/telemetry', async (req, res) => {
          containerId: binId,
         });
      }
-
-
 
     console.log("✅ Saved to MongoDB:", saved._id);
     res.status(200).json({ ok: true, id: saved._id });
@@ -278,6 +305,91 @@ transporter.sendMail(mailOptions, (error, info) => {
     else console.log("📧 Email sent successfully:", info.response);
   });
 };
+
+
+//Driver registration (linked to user by email from sessionStorage)
+
+app.post('/api/drivers/register', async (req, res) => {
+  try {
+    const { email, ...driverData } = req.body;
+    
+    // 1. Ищем пользователя
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // 2. Проверяем лицензию
+    const expiryDate = new Date(req.body.licenseExpiry);
+    if (expiryDate < new Date()) {
+      return res.status(400).json({ message: "Cannot register with an expired license." });
+    }
+
+    // 3. Создаем водителя со всеми данными + статус PENDING
+    const newDriver = new Driver({
+      userId: user._id,
+      licenseNumber: driverData.licenseNumber,
+      licenseExpiry: driverData.licenseExpiry,
+      company: driverData.company,
+      plateNumber: driverData.plateNumber,
+      vehicleModel: driverData.vehicleModel,
+      vehicleYear: driverData.vehicleYear,
+      capacity: driverData.capacity,
+      emergencyContact: {
+        name: driverData.emergencyName,
+        phone: driverData.emergencyPhone,
+        relation: driverData.emergencyRelation
+      },
+      status: 'pending' // <-- ВОТ ЭТО ВАЖНО: теперь он появится у админа
+    });
+
+    await newDriver.save();
+    res.status(201).json({ message: "Application sent! Waiting for admin approval." });
+  } catch (err) {
+    console.error("Driver reg error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+
+// 1. Получить список всех заявок со статусом pending
+app.get('/api/admin/drivers/pending', isAdmin, async (req, res) => {
+  try {
+    const allDrivers = await Driver.find().populate('userId', 'email');
+    console.log("Found drivers in DB:", allDrivers); // Посмотри это в консоли ТЕРМИНАЛА
+    res.json(allDrivers);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. Одобрить или отклонить заявку
+app.patch('/api/admin/drivers/:id/status', isAdmin, async (req, res) => {
+  try {
+    const { status } = req.body; // 'approved' или 'rejected'
+    const driver = await Driver.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    res.json({ message: `Status updated to ${status}`, driver });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+
+  // Внутри PATCH /api/admin/drivers/:id/status
+   const { status } = req.body;
+   const driver = await Driver.findByIdAndUpdate(req.params.id, { status }, { new: true });
+
+// Создаем уведомление для водителя
+    await Notification.create({
+      userId: driver.userId,
+      title: status === 'approved' ? 'Application Approved! 🎉' : 'Application Update',
+      message: status === 'approved' 
+         ? 'Congratulations! You are now an official MedWaste driver. You can start accepting tasks.' 
+         : 'Your application was declined. Please check your document details and try again.',
+       type: status === 'approved' ? 'success' : 'error'
+     });
+
+});
+
+
+
 
 // ── Start ─────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;

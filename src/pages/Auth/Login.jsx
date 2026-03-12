@@ -20,6 +20,7 @@ const Login = () => {
       sessionStorage.setItem("mw_logged_in", "true");
       sessionStorage.setItem("mw_user", res.data.email);
       sessionStorage.setItem("mw_token", res.data.token);
+      sessionStorage.setItem("mw_role", res.data.role);
       
       navigate("/dashboard");
     }

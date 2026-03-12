@@ -7,6 +7,7 @@ import {
   Popup,
 } from "react-leaflet";
 import L from "leaflet";
+import { Link } from 'react-router-dom';
 
 // Leaflet icon fix
 delete L.Icon.Default.prototype._getIconUrl;

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { Link } from 'react-router-dom';
 import axios from "axios";
 
 // ── Inline styles / design tokens ─────────────────────────────────────────────
@@ -88,6 +89,8 @@ const css = `
     font-size: 0.8rem; font-weight: 500; color: #5e6a85; cursor: pointer; transition: all .2s;
   }
   .db-period-tabs button.active { background: #fff; color: #1a2035; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+
+  
 
   /* MAIN LAYOUT */
   .db-main { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
@@ -344,6 +347,8 @@ function Toggle({ on, onToggle }) {
   );
 }
 
+
+
 // ── Bar chart heights (mock data) ─────────────────────────────────────────────
 const barHeights = [30, 55, 45, 70, 60, 80, 51, 65, 40, 58, 72, 51];
 
@@ -390,6 +395,18 @@ useEffect(() => {
   const formatTime = (ts) => ts ? new Date(ts * 1000).toLocaleTimeString() : "Calculating...";
 
 
+
+const [notifications, setNotifications] = useState([]);
+
+useEffect(() => {
+  const fetchNotifications = async () => {
+    const userEmail = sessionStorage.getItem("mw_user");
+    // Здесь нужен эндпоинт GET /api/notifications?email=...
+    const res = await axios.get(`http://localhost:5000/api/notifications?email=${userEmail}`);
+    setNotifications(res.data);
+  };
+  fetchNotifications();
+}, []);
 
 // Внутри компонента Dashboard
 const [allPredictions, setAllPredictions] = useState({});
@@ -570,6 +587,8 @@ const predictions = ["MED-001", "MED-002", "MED-003", "MED-004", "MED-005"].map(
             </div>
           </div>
 
+          
+
           {/* ── AI PREDICTIONS ── */}
           <div className="db-card" style={{ marginBottom: 20 }}>
             <div className="db-card-header">
@@ -577,7 +596,9 @@ const predictions = ["MED-001", "MED-002", "MED-003", "MED-004", "MED-005"].map(
                 <span className="db-card-title">AI Maintenance Predictions</span>
                 <span className="db-badge db-badge-green">✓ Ready · 5 predictions</span>
               </div>
-              <span className="db-card-link">View all predictions →</span>
+              <Link to="/dashboard/Containers" style={{ textDecoration: 'none' }}>
+                 <span className="db-card-link">View all predictions →</span>
+               </Link>
             </div>
             <div style={{ fontSize: "0.82rem", color: "#5e6a85", marginBottom: 14 }}>
               Found {predictions.length} predictions for optimization
@@ -591,7 +612,9 @@ const predictions = ["MED-001", "MED-002", "MED-003", "MED-004", "MED-005"].map(
          <div className="db-card">
            <div className="db-card-header">
              <span className="db-card-title">Needs Attention</span>
-             <span className="db-card-link">View all →</span>
+             <Link to="/dashboard/Alerts" style={{ textDecoration: 'none' }}>
+                 <span className="db-card-link">View all →</span>
+               </Link>
            </div>
   
            {/* Если алертов нет — показываем иконку и надпись "Все ок" */}
@@ -620,14 +643,13 @@ const predictions = ["MED-001", "MED-002", "MED-003", "MED-004", "MED-005"].map(
                </div>
              ))}
            </div>
-           )}
-         
- 
+   )}
+ </div>
 
-            <div className="db-card">
-              <div className="db-card-header">
-                <span className="db-card-title">System Metrics</span>
-              </div>
+    <div className="db-card">
+      <div className="db-card-header">
+        <span className="db-card-title">System Metrics</span>
+      </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {[
                   { val: 5, label: "Active",            pct: 100, color: "#00D68F" },
@@ -649,6 +671,23 @@ const predictions = ["MED-001", "MED-002", "MED-003", "MED-004", "MED-005"].map(
             </div>
           </div>
 
+          {notifications.map(n => !n.read && (
+            <div key={n._id} style={{
+              background: n.type === 'success' ? '#e6faf3' : '#fff0f1',
+             border: `1px solid ${n.type === 'success' ? '#00D68F' : '#e53e3e'}`,
+             padding: '16px', borderRadius: '12px', marginBottom: '16px',
+             display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+            }}>
+            <div>
+               <b style={{ color: n.type === 'success' ? '#00A870' : '#e53e3e' }}>{n.title}</b>
+               <p style={{ margin: '4px 0 0', fontSize: '0.85rem' }}>{n.message}</p>
+             </div>
+               <button onClick={() => markAsRead(n._id)} style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}>✕</button>
+             </div>
+            ))}
+
+
+
           {/* ── QUICK ACTIONS + SETTINGS ── */}
           <div className="db-two-col">
             <div className="db-card">
@@ -657,22 +696,26 @@ const predictions = ["MED-001", "MED-002", "MED-003", "MED-004", "MED-005"].map(
               </div>
               <div className="db-actions-grid">
                 {[
-                  { icon: "🗑️",  label: "Bins" },
-                  { icon: "🗺️",  label: "Map" },
-                  { icon: "📊",  label: "Analytics",    badge: "New" },
-                  { icon: "🤖",  label: "AI Predictions", badge: "5" },
-                  { icon: "📋",  label: "Reports" },
-                  { icon: "⚙️",  label: "Settings" },
-                  { icon: "📲",  label: "Telegram" },
-                  { icon: "🚛",  label: "Collections" },
-                ].map((a) => (
-                  <div className="db-action-btn" key={a.label}>
+                   { icon: "🗑️", label: "Bins",      link: "/dashboard/containers" },
+                   { icon: "🗺️", label: "Map",       link: "/dashboard/map" },
+                   { icon: "⚠️", label: "Alerts",    link: "/dashboard/alerts" },
+                   { icon: "📊", label: "Analytics", link: "/dashboard/reports", badge: "New" },
+                   { icon: "📋", label: "Reports",   link: "/dashboard/reports" },
+                   { icon: "", label: "Collection",   link: "/dashboard/routes-history" },
+                   { icon: "", label: "Settings",   link: "/dashboard/profile" },
+                 ].map((a) => (
+                   <Link 
+                     to={a.link} 
+                     key={a.label} 
+                     style={{ textDecoration: 'none', color: 'inherit' }}
+                  >
+                  <div className="db-action-btn" key={a.label} as={a.link ? Link : "div"} {...(a.link && { to: a.link })}>
                     {a.badge && <span className="db-action-new">{a.badge}</span>}
                     <span className="db-action-icon">{a.icon}</span>
                     <span className="db-action-label">{a.label}</span>
                   </div>
+                  </Link>
                 ))}
-              </div>
             </div>
 
             <div className="db-card">

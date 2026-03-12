@@ -1,12 +1,7 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { Link } from 'react-router-dom';
+import axios from "axios";
 
-const mockBins = [
-  { id: "MED-004", status: "Active", fullness: 78, temperature: 22.0, weight: 12.0, date: "Nov 9, 2025",  type: "Sharp Medical Waste" },
-  { id: "MED-001", status: "Active", fullness: 60, temperature: 21.5, weight: 8.0,  date: "Feb 4, 2026",  type: "Sharp Medical Waste" },
-  { id: "MED-003", status: "Active", fullness: 45, temperature: 22.0, weight: 12.0, date: "Feb 22, 2026", type: "Sharp Medical Waste" },
-  { id: "MED-005", status: "Active", fullness: 40, temperature: 21.5, weight: 10.0, date: "Jan 8, 2026",  type: "Sharp Medical Waste" },
-  { id: "MED-002", status: "Active", fullness: 33, temperature: 21.5, weight: 6.0,  date: "Feb 22, 2026", type: "Sharp Medical Waste" },
-];
 
 const css = `
   @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
@@ -145,157 +140,158 @@ const css = `
   }
   .ct-date { font-size: 0.72rem; color: #5e6a85; }
 
+  /* PREDICTIONS */
+  .db-predictions-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 12px; }
+  .db-pred-card {
+    background: #fff; border-radius: 12px; border: 1px solid #e4e9f0;
+    padding: 16px; transition: transform .2s, box-shadow .2s;
+  }
+  .db-pred-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,.07); }
+  .db-pred-id { font-family:  sans-serif; font-weight: 700; font-size: 0.95rem; color: #1a2035; margin-bottom: 2px; }
+  .db-pred-meta { font-size: 0.75rem; color: #5e6a85; margin-bottom: 10px; }
+  .db-pred-row { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 4px; }
+  .db-pred-row-label { color: #5e6a85; }
+  .db-pred-row-val { font-weight: 500; color: #1a2035; }
+  .db-pred-confidence { margin-top: 10px; }
+  .db-pred-conf-bar { height: 4px; background: #e4e9f0; border-radius: 99px; margin-top: 4px; }
+  .db-pred-conf-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #1A6EFF, #00D68F); }
+  .db-pred-btn {
+    width: 100%; margin-top: 12px; padding: 8px; border-radius: 8px;
+    border: 1px solid #1A6EFF; color: #1A6EFF; background: transparent;
+    font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all .2s;
+  }
+  .db-pred-btn:hover { background: #1A6EFF; color: #fff; }
+  .db-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 0.72rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+  .db-badge-green { background: #e6faf3; color: #00A870; }
+  .db-badge-blue  { background: #eff5ff; color: #1A6EFF; }
+
   @media (max-width: 700px) {
     .ct-root { padding: 16px; }
     .ct-grid { grid-template-columns: 1fr; }
   }
 `;
 
-function getBarColor(fullness) {
-  if (fullness >= 80) return "linear-gradient(90deg, #EF4444, #F87171)";
-  if (fullness >= 60) return "linear-gradient(90deg, #F59E0B, #FCD34D)";
-  return "linear-gradient(90deg, #1A6EFF, #00D68F)";
-}
-
-function getAccentColor(fullness) {
-  if (fullness >= 80) return "linear-gradient(90deg, #EF4444, #F87171)";
-  if (fullness >= 60) return "linear-gradient(90deg, #F59E0B, #FCD34D)";
-  return "linear-gradient(90deg, #1A6EFF, #00D68F)";
-}
-
-function getStatusClass(fullness) {
-  if (fullness >= 80) return "ct-status-critical";
-  if (fullness >= 60) return "ct-status-warning";
-  return "ct-status-active";
-}
-
-function getStatusLabel(fullness) {
-  if (fullness >= 80) return "⚠ Critical";
-  if (fullness >= 60) return "! Warning";
-  return "● Active";
-}
-
-const SORT_OPTIONS = [
-  { value: "fullness_desc",  label: "Fullness (↓)" },
-  { value: "fullness_asc",   label: "Fullness (↑)" },
-  { value: "date_desc",      label: "Last update (↓)" },
-  { value: "date_asc",       label: "Last update (↑)" },
-  { value: "id_asc",         label: "Bin ID (A-Z)" },
-  { value: "id_desc",        label: "Bin ID (Z-A)" },
-];
-
-function Containers() {
+ function Containers() {
+  const [bins, setBins] = useState([]);
   const [sortType, setSortType] = useState("fullness_desc");
-  const [filterOpen, setFilterOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const sorted = useMemo(() => {
-    const bins = [...mockBins];
-    switch (sortType) {
-      case "fullness_desc": return bins.sort((a, b) => b.fullness - a.fullness);
-      case "fullness_asc":  return bins.sort((a, b) => a.fullness - b.fullness);
-      case "id_asc":        return bins.sort((a, b) => a.id.localeCompare(b.id));
-      case "id_desc":       return bins.sort((a, b) => b.id.localeCompare(a.id));
-      default:              return bins;
+  const fetchBins = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/bins");
+      setBins(res.data);
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching bins:", err);
+      setLoading(false);
     }
-  }, [sortType]);
+  };
 
-  return (
+  useEffect(() => {
+    fetchBins();
+    const interval = setInterval(fetchBins, 5000); // Обновляем каждые 5 сек
+    return () => clearInterval(interval);
+  }, []);
+
+  // 2. Логика сортировки
+  const sortedBins = useMemo(() => {
+    let result = [...bins];
+    if (sortType === "fullness_desc") result.sort((a, b) => b.fullness - a.fullness);
+    if (sortType === "fullness_asc")  result.sort((a, b) => a.fullness - b.fullness);
+    if (sortType === "id_asc")        result.sort((a, b) => a._id.localeCompare(b._id));
+    return result;
+  }, [bins, sortType]);
+
+  // Хелперы для стилей
+  const getStatusInfo = (val) => {
+    if (val >= 80) return { class: "ct-status-critical", label: "⚠ Critical", color: "#EF4444" };
+    if (val >= 60) return { class: "ct-status-warning", label: "! Warning", color: "#F59E0B" };
+    return { class: "ct-status-active", label: "● Active", color: "#1A6EFF" };
+  };
+
+
+
+ return (
     <>
       <style>{css}</style>
       <div className="ct-root">
-
-        {/* PAGE HEADER */}
         <div className="ct-page-header">
-          <h1>Bins</h1>
-          <p>Manage and monitor medical waste bins</p>
+          <h1>Bins Monitoring</h1>
+          <p>Real-time status of all medical waste containers</p>
         </div>
 
-        {/* TOOLBAR */}
         <div className="ct-toolbar">
           <div className="ct-toolbar-left">
-            <button className="ct-btn" onClick={() => setFilterOpen(!filterOpen)}>
-              Filters {filterOpen ? "↑" : "↓"}
-            </button>
-
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.85rem", color: "#5e6a85" }}>
-              Sort:
-              <select
-                className="ct-sort-select"
-                value={sortType}
-                onChange={(e) => setSortType(e.target.value)}
-              >
-                {SORT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </label>
-
-            <span className="ct-count">Shown {sorted.length} of {mockBins.length}</span>
+            <select 
+              className="ct-sort-select" 
+              value={sortType} 
+              onChange={(e) => setSortType(e.target.value)}
+            >
+              <option value="fullness_desc">Sort by Fullness (High)</option>
+              <option value="fullness_asc">Sort by Fullness (Low)</option>
+              <option value="id_asc">Sort by ID</option>
+            </select>
+            <span className="ct-count">Total Bins: {bins.length}</span>
           </div>
-
-          <button className="ct-btn ct-btn-primary" onClick={() => window.location.reload()}>
-             Refresh
+          <button className="ct-btn ct-btn-primary" onClick={fetchBins}>
+            Update Data
           </button>
         </div>
 
-        {/* BIN CARDS */}
-        <div className="ct-grid">
-          {sorted.map((bin) => (
-            <div key={bin.id} className="ct-card">
+        {loading ? (
+          <p>Loading containers...</p>
+        ) : (
+          <div className="ct-grid">
+            {sortedBins.map((bin) => {
+              const status = getStatusInfo(bin.fullness);
+              return (
+                <div key={bin._id} className="ct-card">
+                  <div className="ct-card-accent" style={{ background: status.color }} />
+                  
+                  <div className="ct-card-head">
+                    <span className="ct-card-id">{bin._id}</span>
+                    <span className={`ct-status-badge ${status.class}`}>
+                      {status.label}
+                    </span>
+                  </div>
+                  <div className="ct-card-sub">Sharp Medical Waste • ID: {bin._id}</div>
 
-              {/* Accent top bar */}
-              <div className="ct-card-accent" style={{ background: getAccentColor(bin.fullness) }} />
+                  <div className="ct-fullness-header">
+                    <span>Current Fullness</span>
+                    <span className="ct-fullness-val">{bin.fullness.toFixed(1)}%</span>
+                  </div>
+                  <div className="ct-bar-track">
+                    <div
+                      className="ct-bar-fill"
+                      style={{ 
+                        width: `${bin.fullness}%`, 
+                        background: status.color 
+                      }}
+                    />
+                  </div>
 
-              {/* Header */}
-              <div className="ct-card-head">
-                <span className="ct-card-id">{bin.id}</span>
-                <span className={`ct-status-badge ${getStatusClass(bin.fullness)}`}>
-                  {getStatusLabel(bin.fullness)}
-                </span>
-              </div>
-              <div className="ct-card-sub">Auto Registered</div>
+                  <div className="ct-stats-row">
+                    <div className="ct-stat">
+                      <div className="ct-stat-val">24°C</div>
+                      <div className="ct-stat-label">Temperature</div>
+                    </div>
+                    <div className="ct-stat">
+                      <div className="ct-stat-val">{(bin.fullness * 0.4).toFixed(1)} kg</div>
+                      <div className="ct-stat-label">Est. Weight</div>
+                    </div>
+                  </div>
 
-              {/* Fullness bar */}
-              <div className="ct-fullness-header">
-                <span>Fullness</span>
-                <span className="ct-fullness-val">{bin.fullness}%</span>
-              </div>
-              <div className="ct-bar-track">
-                <div
-                  className="ct-bar-fill"
-                  style={{ width: `${bin.fullness}%`, background: getBarColor(bin.fullness) }}
-                />
-              </div>
-
-              {/* Stats */}
-              <div className="ct-stats-row">
-                <div className="ct-stat">
-                  <div className="ct-stat-icon"></div>
-                  <div className="ct-stat-val">{bin.temperature}°C</div>
-                  <div className="ct-stat-label">Temp.</div>
+                  <div className="ct-card-footer">
+                    <span className="ct-type-badge">Type A</span>
+                    <span className="ct-date">
+                      Last: {new Date(bin.timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
                 </div>
-                <div className="ct-stat">
-                  <div className="ct-stat-icon"></div>
-                  <div className="ct-stat-val">{bin.weight.toFixed(1)} kg</div>
-                  <div className="ct-stat-label">Weight</div>
-                </div>
-                <div className="ct-stat">
-                  <div className="ct-stat-icon"></div>
-                  <div className="ct-stat-val" style={{ fontSize: "0.72rem" }}>Auto</div>
-                  <div className="ct-stat-label">Location</div>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="ct-card-footer">
-                <span className="ct-type-badge">{bin.type}</span>
-                <span className="ct-date"> {bin.date}</span>
-              </div>
-
-            </div>
-          ))}
-        </div>
-
+              );
+            })}
+          </div>
+        )}
       </div>
     </>
   );

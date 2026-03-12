@@ -35,12 +35,38 @@ function makeIcon(fullness) {
 }
 
 // ── Data ──────────────────────────────────────────────────────
+// ── Реальные координаты мед. учреждений Астаны ────────────────
 const bins = [
-  { id: "MED-004", status: "active", fullness: 78, lat: 51.1694, lng: 71.4491, location: "Block A", updated: "Nov 9, 2025"  },
-  { id: "MED-001", status: "active", fullness: 60, lat: 51.0912, lng: 71.4172, location: "Block B", updated: "Feb 4, 2026"  },
-  { id: "MED-003", status: "active", fullness: 45, lat: 51.1011, lng: 71.4276, location: "Block C", updated: "Feb 22, 2026" },
-  { id: "MED-005", status: "active", fullness: 40, lat: 51.1010, lng: 71.4276, location: "Block C", updated: "Jan 8, 2026"  },
-  { id: "MED-002", status: "active", fullness: 33, lat: 51.1605, lng: 71.4704, location: "Block D", updated: "Feb 22, 2026" },
+  { 
+    id: "MED-AST-001", status: "active", fullness: 85, 
+    lat: 51.1075, lng: 71.4082, 
+    location: "Центр материнства и детства", updated: "Feb 24, 2026" 
+  },
+  { 
+    id: "MED-AST-002", status: "active", fullness: 62, 
+    lat: 51.1082, lng: 71.4115, 
+    location: "Кардиохирургический центр", updated: "Feb 24, 2026" 
+  },
+  { 
+    id: "MED-AST-003", status: "active", fullness: 45, 
+    lat: 51.1110, lng: 71.4055, 
+    location: "Диагностический центр", updated: "Feb 23, 2026" 
+  },
+  { 
+    id: "MED-AST-004", status: "active", fullness: 20, 
+    lat: 51.1578, lng: 71.4645, 
+    location: "Городская больница №1", updated: "Feb 24, 2026" 
+  },
+  { 
+    id: "MED-AST-005", status: "active", fullness: 92, 
+    lat: 51.1642, lng: 71.4285, 
+    location: "Медицинский университет Астана", updated: "Feb 24, 2026" 
+  },
+  { 
+    id: "MED-AST-006", status: "active", fullness: 55, 
+    lat: 51.1042, lng: 71.4150, 
+    location: "Онкологический центр", updated: "Feb 24, 2026" 
+  }
 ];
 
 // ── Styles ────────────────────────────────────────────────────
@@ -209,10 +235,10 @@ function MapPage() {
           <div className="mp-map-card">
             <div className="mp-map-label"> Container Map</div>
             <MapContainer
-              center={[51.13, 71.44]}
-              zoom={12}
-              style={{ height: "586px", width: "100%" }}
-            >
+               center={[51.1283, 71.4305]} // Центр Астаны
+               zoom={12}
+               style={{ height: "586px", width: "100%" }}
+             >
               <TileLayer
                 attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

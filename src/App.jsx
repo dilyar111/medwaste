@@ -12,6 +12,7 @@ import Alerts from "./pages/Alerts";
 import Reports from "./pages/Reports";
 import DriverRegistration from "./pages/DriverRegistration";
 import RoutesHistory from "./pages/RouteHistory";
+import AdminDrivers from "./pages/AdminDrivers";
 import Profile from "./pages/Profile";
 
 // Импорты компонентов
@@ -43,6 +44,7 @@ function App() {
           <Route path="alerts" element={<Alerts />} />
           <Route path="reports" element={<Reports />} />
           <Route path="driver-registration" element={<DriverRegistration />} />
+          <Route path="admin/drivers" element={<AdminDrivers />} />
           <Route path="profile" element={<Profile />} />
           <Route path="routes-history" element={<RoutesHistory />} />
         </Route>

@@ -306,6 +306,7 @@ export default function Sidebar() {
   const [open, setOpen] = useState(false);
   const email     = sessionStorage.getItem("mw_user") || "user@example.com";
   const username  = email.split("@")[0];
+  const userRole  = sessionStorage.getItem("mw_role") || "user";
 
   const isActive = (to) =>
     to === "/dashboard"
@@ -331,30 +332,47 @@ export default function Sidebar() {
           <div className="sb-logo-icon">M</div>
           <span className="sb-logo-text">MedWaste</span>
         </div>
+{/* NAV */}
+<nav className="sb-nav">
+  {navItems.map((section, si) => (
+    <React.Fragment key={section.section}>
+      {si > 0 && <div className="sb-divider" />}
+      <div className="sb-section-label">{section.section}</div>
+      {section.items.map((item) => (
+        <Link
+          key={item.to}
+          to={item.to}
+          className={`sb-link ${isActive(item.to) ? "active" : ""}`}
+        >
+          <span className="sb-icon-wrap">
+            <SbIcon name={item.icon} />
+          </span>
+          <span className="sb-link-label">{item.label}</span>
+          {item.badge && <span className="sb-badge">{item.badge}</span>}
+          <span className="sb-tooltip">{item.label}</span>
+        </Link>
+      ))}
+    </React.Fragment>
+  ))}
 
-        {/* NAV */}
-        <nav className="sb-nav">
-          {navItems.map((section, si) => (
-            <React.Fragment key={section.section}>
-              {si > 0 && <div className="sb-divider" />}
-              <div className="sb-section-label">{section.section}</div>
-              {section.items.map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className={`sb-link ${isActive(item.to) ? "active" : ""}`}
-                >
-                  <span className="sb-icon-wrap">
-                    <SbIcon name={item.icon} />
-                  </span>
-                  <span className="sb-link-label">{item.label}</span>
-                  {item.badge && <span className="sb-badge">{item.badge}</span>}
-                  <span className="sb-tooltip">{item.label}</span>
-                </Link>
-              ))}
-            </React.Fragment>
-          ))}
-        </nav>
+  {/* ADMIN SECTION - ВЫНЕСЕНА ОТДЕЛЬНО */}
+  {userRole === "admin" && (
+    <>
+      <div className="sb-divider" />
+      <div className="sb-section-label">Administration</div>
+      <Link
+        to="/dashboard/admin/drivers"
+        className={`sb-link ${isActive("/dashboard/admin/drivers") ? "active" : ""}`}
+      >
+        <span className="sb-icon-wrap">
+          <SbIcon name="user" />
+        </span>
+        <span className="sb-link-label">Driver Approvals</span>
+        <span className="sb-tooltip">Driver Approvals</span>
+      </Link>
+    </>
+  )}
+</nav>
 
         {/* USER */}
         <div className="sb-user">
