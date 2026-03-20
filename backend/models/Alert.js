@@ -11,4 +11,4 @@ const alertSchema = new mongoose.Schema({
   timestamp:   { type: Date, default: Date.now },
 });
 
-module.exports = mongoose.model('Alert', alertSchema);
+module.exports = mongoose.model('Alert', alertSchema); 

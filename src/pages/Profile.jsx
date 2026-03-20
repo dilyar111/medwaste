@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 
 const css = `
-  @import url('https://cdn.jsdelivr.net/npm/geist@1.3.0/dist/fonts/geist-sans/style.css');
+  
 
   .pf-root {
     min-height: 100vh;

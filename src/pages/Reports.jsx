@@ -15,7 +15,7 @@ const barData = [
 ];
 
 const css = `
-  @import url('https://cdn.jsdelivr.net/npm/geist@1.3.0/dist/fonts/geist-sans/style.css');
+  
 
   .rp-root {
     min-height: 100vh;

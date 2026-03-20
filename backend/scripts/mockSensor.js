@@ -1,43 +1,51 @@
 const axios = require('axios');
 
-const binIds = ["MED-001", "MED-002", "MED-003", "MED-004", "MED-005"];
+const API = 'http://localhost:5000/api/telemetry';
 
-// Храним текущий уровень для каждого бака
-let levels = {
-    "MED-001": 95,
-    "MED-002": 25,
-    "MED-003": 40,
-    "MED-004": 5,
-    "MED-005": 60
-};
+// ── Bin configurations ────────────────────────────────────────
+// Each bin has different fill rate to simulate real usage patterns
+const bins = [
+  { id: 'MED-001', fullness: 15, fillRate: 2.5,  label: 'Surgery Ward'       },
+  { id: 'MED-002', fullness: 60, fillRate: 1.0,  label: 'Therapy Dept'       },
+  { id: 'MED-003', fullness: 40, fillRate: 3.5,  label: 'ICU'                },
+  { id: 'MED-004', fullness: 78, fillRate: 0.8,  label: 'Pediatrics'         },
+  { id: 'MED-005', fullness: 25, fillRate: 1.8,  label: 'Emergency Room'     },
+];
 
-console.log("🚀 Датчики запущены для 5 контейнеров...");
+console.log('🚀 Mock sensor started — simulating 5 medical waste containers');
+console.log('─'.repeat(55));
+bins.forEach(b => console.log(`  ${b.id}  ${b.label.padEnd(18)} starting at ${b.fullness}%`));
+console.log('─'.repeat(55));
 
+async function sendReading(bin) {
+  try {
+    await axios.post(API, {
+      binId:     bin.id,
+      fullness:  Number(bin.fullness.toFixed(1)),
+      timestamp: new Date().toISOString(),
+    });
+    console.log(`📡 ${bin.id} → ${bin.fullness.toFixed(1)}%  (${bin.label})`);
+  } catch (err) {
+    console.error(`❌ ${bin.id} failed: ${err.code || err.message}`);
+  }
+}
+
+// ── Simulation tick ───────────────────────────────────────────
 setInterval(async () => {
-    // ВАЖНО: Используем for...of, чтобы id был определен для каждой итерации
-    for (const id of binIds) {
-        
-        // 1. Имитируем рост
-        levels[id] += Math.random() * 3;
-        
-        // 2. Если бак полон, сбрасываем (имитация очистки)
-        if (levels[id] > 100) {
-            levels[id] = Math.random() * 10;
-            console.log(`♻️ Контейнер ${id} был очищен`);
-        }
+  for (const bin of bins) {
+    // Add fill rate + small random noise
+    const noise = (Math.random() - 0.3) * 1.5; // slight variance
+    bin.fullness += bin.fillRate + noise;
 
-        try {
-            // 3. Отправляем данные
-            await axios.post('http://127.0.0.1:5000/api/telemetry', {
-                binId: id,
-                fullness: Number(levels[id].toFixed(2)),
-                timestamp: new Date().toISOString()
-            });
-            
-            console.log(`📡 [${id}] -> ${levels[id].toFixed(2)}%`);
-        } catch (err) {
-            console.error(`❌ Ошибка отправки для ${id}:`, err.message);
-        }
+    // Reset when emptied (simulates collection)
+    if (bin.fullness >= 100) {
+      console.log(`\n✅ ${bin.id} COLLECTED — reset to 5%\n`);
+      bin.fullness = 5 + Math.random() * 10;
     }
-    console.log("--- Пауза 60 секунд ---");
-}, 60000);
+
+    // Clamp to 0-100
+    bin.fullness = Math.max(0, Math.min(100, bin.fullness));
+
+    await sendReading(bin);
+  }
+}, 5000); // every 5 seconds

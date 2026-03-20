@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import axios from "axios";
+import api from "../services/api";
 
 const css = `
-  @import url('https://cdn.jsdelivr.net/npm/geist@1.3.0/dist/fonts/geist-sans/style.css');
+  
 
   .dr-root {
     min-height: 100vh;
@@ -156,7 +156,7 @@ function DriverRegistration() {
   const userEmail = sessionStorage.getItem("mw_user"); // Получаем email текущего юзера
 
   try {
-    const response = await axios.post("http://localhost:5000/api/drivers/register", {
+    const response = await api.post("/api/drivers/register", {
       ...form,
       email: userEmail
     });

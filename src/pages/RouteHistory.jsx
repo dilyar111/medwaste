@@ -20,7 +20,7 @@ L.Icon.Default.mergeOptions({
 const mockRoutes = []; // no routes yet
 
 const css = `
-  @import url('https://cdn.jsdelivr.net/npm/geist@1.3.0/dist/fonts/geist-sans/style.css');
+  
 
   .rh-root {
     min-height: 100vh;

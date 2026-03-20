@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Link } from 'react-router-dom';
 import axios from "axios";
+import { useSocket } from "../hooks/useSocket";
 
 
 const css = `
@@ -189,9 +190,20 @@ const css = `
 
   useEffect(() => {
     fetchBins();
-    const interval = setInterval(fetchBins, 5000); // Обновляем каждые 5 сек
-    return () => clearInterval(interval);
+    const id = setInterval(fetchBins, 5000);
+    return () => clearInterval(id);
   }, []);
+
+  useSocket({
+  'telemetry:update': ({ binId, fullness, timestamp }) => {
+    setBins(prev => {
+      const exists = prev.find(b => b._id === binId);
+      if (exists) return prev.map(b => b._id === binId ? { ...b, fullness, timestamp } : b);
+      return [...prev, { _id: binId, fullness, timestamp }];
+    });
+  },
+});
+ 
 
   // 2. Логика сортировки
   const sortedBins = useMemo(() => {

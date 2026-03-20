@@ -71,7 +71,7 @@ const bins = [
 
 // ── Styles ────────────────────────────────────────────────────
 const css = `
-  @import url('https://cdn.jsdelivr.net/npm/geist@1.3.0/dist/fonts/geist-sans/style.css');
+  
 
   .mp-root {
     min-height: 100vh;

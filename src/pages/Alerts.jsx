@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useMemo } from "react";
-import axios from "axios";
+import { useSocket } from "../hooks/useSocket";
+import api from "../services/api";
 
-const API = "http://localhost:5000";
 
 const css = `
-  @import url('https://cdn.jsdelivr.net/npm/geist@1.3.0/dist/fonts/geist-sans/style.css');
+  
 
   .al-root {
     min-height: 100vh;
@@ -157,7 +157,7 @@ export default function Alerts() {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.get(`${API}/api/alerts`);
+      const res = await api.get('/api/alerts');
       setAlerts(res.data.map(normalize));
     } catch (e) {
       console.error("Alerts fetch error", e);
@@ -168,16 +168,21 @@ export default function Alerts() {
   };
 
   useEffect(() => {
-    fetchAlerts();
-    // Auto-refresh every 30s
+    fetchAlerts();                                    // ← начальный fetch
     const timer = setInterval(fetchAlerts, 30000);
     return () => clearInterval(timer);
   }, []);
 
+  useSocket({
+  'alert:new': (alert) => {
+    setAlerts(prev => [{ ...alert, id: alert._id }, ...prev]);
+  },
+});
+
   // ── Actions ─────────────────────────────────────────────────
   const resolve = async (id) => {
     try {
-      await axios.patch(`${API}/api/alerts/${id}/resolve`);
+      await api.patch(`/api/alerts/resolve`);
       setAlerts(a => a.map(x => x.id === id ? { ...x, resolved: true, severity: "resolved" } : x));
     } catch {
       // Optimistic update even if backend fails
@@ -187,7 +192,7 @@ export default function Alerts() {
 
   const dismiss = async (id) => {
     try {
-      await axios.delete(`${API}/api/alerts/${id}`);
+      await api.delete(`/api/alerts/${id}`);
     } catch { /* silent */ }
     setAlerts(a => a.filter(x => x.id !== id));
   };
