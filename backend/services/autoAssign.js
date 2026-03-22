@@ -1,14 +1,14 @@
 const User      = require('../models/pg/User');
 const Task      = require('../models/pg/Task');
 const Container = require('../models/pg/Container');
+const Driver = require('../models/pg/Driver');
+const { sendTaskAssignedEmail } = require('./email');
 
-// ── Find nearest available driver ────────────────────────────
-// Uses Haversine formula to calculate distance from driver to container
 function haversine(lat1, lon1, lat2, lon2) {
-  const R = 6371; // km
+  const R    = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
+  const a    =
     Math.sin(dLat / 2) ** 2 +
     Math.cos((lat1 * Math.PI) / 180) *
     Math.cos((lat2 * Math.PI) / 180) *
@@ -16,48 +16,61 @@ function haversine(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Assign nearest available driver to a container
-async function autoAssignDriver(containerId) {
+async function autoAssignDriver(containerId, fullness = 0) {
   const container = await Container.findByPk(containerId);
   if (!container) throw new Error('Container not found');
 
-  // All available drivers
   const drivers = await User.findAll({
     where: { role: 'driver', isAvailable: true },
   });
+  if (drivers.length === 0) {
+    console.warn('⚠️ No available drivers');
+    return null;
+  }
 
-  if (drivers.length === 0) return null;
-
-  // Sort by distance if container has coordinates
   let chosen = drivers[0];
   if (container.lat && container.lon) {
     const withDistance = drivers
       .filter(d => d.lastLat && d.lastLon)
       .map(d => ({
         driver: d,
-        dist: haversine(d.lastLat, d.lastLon, container.lat, container.lon),
+        dist:   haversine(d.lastLat, d.lastLon, container.lat, container.lon),
       }))
       .sort((a, b) => a.dist - b.dist);
 
-    if (withDistance.length > 0) chosen = withDistance[0].driver;
+    if (withDistance.length > 0) {
+      chosen = withDistance[0].driver;
+      console.log(`📍 Nearest driver: ${chosen.email} (${withDistance[0].dist.toFixed(1)} km away)`);
+    }
+  }
+  const driverRecord = await Driver.findOne({ where: { userId: chosen.id, status: 'approved' } });
+  if (!driverRecord) {
+    console.warn(`⚠️ No driver record for user ${chosen.email}`);
+    return null;
   }
 
-  // Create task and mark driver as unavailable
   const task = await Task.create({
-    containerId,
-    driverId:   chosen.id,
-    status:     'pending',
-    priority:   'high',
-    assignedAt: new Date(),
+    containerId: container.qrCode,
+    driverId:    driverRecord.id,
+    status:      'assigned',
+    assignedAt:  new Date(),
   });
 
   await chosen.update({ isAvailable: false });
+  console.log(`✅ Auto-assigned driver ${chosen.email} to ${container.qrCode}`);
 
-  console.log(`✅ Auto-assigned driver ${chosen.id} to container ${containerId}`);
+  // 📧 Email notification to driver
+  await sendTaskAssignedEmail(
+    chosen.email,
+    chosen.fullName || chosen.email,
+    container.qrCode,
+    container.location,
+    fullness
+  );
+
   return task;
 }
 
-// Assign nearest available utilizer when driver picks up waste
 async function autoAssignUtilizer(taskId) {
   const task = await Task.findByPk(taskId);
   if (!task) throw new Error('Task not found');
@@ -72,9 +85,7 @@ async function autoAssignUtilizer(taskId) {
   }
 
   await task.update({ utilizerId: utilizer.id });
-  await utilizer.update({ isAvailable: false });
-
-  console.log(`✅ Auto-assigned utilizer ${utilizer.id} to task ${taskId}`);
+  console.log(`✅ Auto-assigned utilizer ${utilizer.email} to task ${taskId}`);
   return task;
 }
 

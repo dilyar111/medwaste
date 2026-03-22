@@ -97,6 +97,10 @@ router.patch('/tasks/:id/status', authenticate, async (req, res) => {
     if (status === 'in_transit') {
       await autoAssignUtilizer(task.id);
     }
+    if (status === 'in_transit') {
+      console.log(`🔄 Calling autoAssignUtilizer for task ${task.id}`);
+     await autoAssignUtilizer(task.id);
+    }
     // Free up driver in Redis cache when task is done
     if (status === 'completed' || status === 'cancelled') {
       await User.update({ isAvailable: true }, { where: { id: req.user.userId } });

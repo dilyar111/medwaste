@@ -48,4 +48,4 @@ setInterval(async () => {
 
     await sendReading(bin);
   }
-}, 5000); // every 5 seconds
+}, 50000); // every 5 seconds

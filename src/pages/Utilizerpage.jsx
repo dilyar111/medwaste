@@ -72,7 +72,7 @@ export default function UtilizerPage() {
     try {
       await acceptWaste(id);
       setIncoming(prev => prev.map(t => t.id === id ? { ...t, status: "at_utilization" } : t));
-    } catch (err) { alert("Error: " + err.message); }
+    } catch (err) { console.error("Accept error:", err.response?.data || err.message); }
   };
 
   const handleComplete = async (id) => {
@@ -81,7 +81,7 @@ export default function UtilizerPage() {
       await completeProcess(id, { weightKg: Number(data.weight || 0), method: data.method || "incineration", notes: data.notes || "" });
       setIncoming(prev => prev.filter(t => t.id !== id));
       fetchData();
-    } catch (err) { alert("Error: " + err.message); }
+    } catch (err) { console.error("Complete error:", err.response?.data || err.message); }
   };
 
   const tasks = tab === "incoming" ? incoming : history;
