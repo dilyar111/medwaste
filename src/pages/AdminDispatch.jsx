@@ -34,6 +34,72 @@ const css = `
     border-radius:10px; padding:12px 20px; font-size:0.85rem; font-weight:500;
     box-shadow:0 8px 24px rgba(0,0,0,.2); animation:toastIn .3s ease; z-index:9999; }
   @keyframes toastIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+  @media (max-width: 700px) {
+    .ad-root { padding: 12px; }
+    .ad-header h1 { font-size: 1.45rem; }
+    .ad-header p  { font-size: 0.82rem; }
+    .ad-card-title { padding: 12px 14px; font-size: 0.88rem; }
+
+    .ad-table,
+    .ad-table tbody,
+    .ad-table tr,
+    .ad-table td {
+      display: block;
+      width: 100%;
+    }
+
+    .ad-table thead {
+      display: none;
+    }
+
+    .ad-table tr {
+      margin: 10px;
+      border: 1px solid #e8edf5;
+      border-radius: 10px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .ad-table td {
+      border-top: 1px solid #f3f6fb;
+      padding: 10px 12px;
+      font-size: 0.82rem;
+    }
+
+    .ad-table td:first-child {
+      border-top: none;
+    }
+
+    .ad-table td[data-label]::before {
+      content: attr(data-label);
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #6b7791;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: 4px;
+    }
+
+    .ad-select {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .ad-btn {
+      width: 100%;
+      min-height: 38px;
+    }
+
+    .ad-toast {
+      left: 12px;
+      right: 12px;
+      bottom: 94px;
+      font-size: 0.8rem;
+      padding: 10px 12px;
+    }
+  }
 `;
 
 export default function AdminDispatch() {
@@ -126,23 +192,27 @@ export default function AdminDispatch() {
               <tbody>
                 {alerts.map(alert => (
                   <tr key={alert._id}>
-                    <td style={{ fontWeight: 600 }}>{alert.containerId}</td>
-                    <td><span className="ad-critical">{alert.fullness}%</span></td>
-                    <td>
+                    <td data-label="Container" style={{ fontWeight: 600 }}>{alert.containerId}</td>
+                    <td data-label="Fullness"><span className="ad-critical">{alert.fullness}%</span></td>
+                    <td data-label="Select Driver">
                       <select
                         className="ad-select"
                         onChange={(e) => setSelected({ ...selected, [alert._id]: e.target.value })}
                         defaultValue=""
                       >
                         <option value="" disabled>— Choose Driver —</option>
-                        {drivers.map(d => (
-                          <option key={d._id} value={d._id}>
-                            {d.userId?.email} · {d.plateNumber}
+                        {drivers.map((d) => {
+                          const driverId = d.id ?? d._id;
+                          const driverEmail = d.user?.email || d.userId?.email || `driver-${driverId}`;
+                          return (
+                          <option key={driverId} value={driverId}>
+                            {driverEmail} · {d.plateNumber || "No plate"}
                           </option>
-                        ))}
+                        );
+                        })}
                       </select>
                     </td>
-                    <td>
+                    <td data-label="Action">
                       <button
                         className="ad-btn ad-btn-blue"
                         onClick={() => handleAssign(alert.containerId, alert._id)}
@@ -175,11 +245,11 @@ export default function AdminDispatch() {
               <tbody>
                 {tasks.map(t => (
                   <tr key={t._id || t.id}>
-                    <td style={{ fontWeight: 600 }}>{t.containerId}</td>
-                    <td style={{ color: "#5e6a85", fontSize: "0.8rem" }}>
+                    <td data-label="Container" style={{ fontWeight: 600 }}>{t.containerId}</td>
+                    <td data-label="Driver ID" style={{ color: "#5e6a85", fontSize: "0.8rem" }}>
                       {t.driverId?.toString().slice(-6) || t.driverId}
                     </td>
-                    <td>
+                    <td data-label="Status">
                       <span className={`ad-status ${
                         t.status === "assigned"       ? "ad-status-assigned" :
                         t.status === "in_transit"     ? "ad-status-transit"  :
@@ -188,7 +258,7 @@ export default function AdminDispatch() {
                         {t.status}
                       </span>
                     </td>
-                    <td style={{ color: "#5e6a85", fontSize: "0.8rem" }}>
+                    <td data-label="Assigned At" style={{ color: "#5e6a85", fontSize: "0.8rem" }}>
                       {t.assignedAt ? new Date(t.assignedAt).toLocaleString() : "—"}
                     </td>
                   </tr>

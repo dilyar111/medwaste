@@ -60,6 +60,22 @@ function App() {
             path="admin/drivers"
             element={
               <PrivateRoute requiredRole="admin">
+                <AdminApprovals driverOnly />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="driver-approvals"
+            element={
+              <PrivateRoute requiredRole="admin">
+                <AdminApprovals driverOnly />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="approvals"
+            element={
+              <PrivateRoute requiredRole="admin">
                 <AdminApprovals />
               </PrivateRoute>
             }

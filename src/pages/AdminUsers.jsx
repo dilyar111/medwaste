@@ -87,6 +87,104 @@ const css = `
     .au-stats { grid-template-columns:repeat(2,1fr); }
     .au-root  { padding:16px; }
   }
+
+  @media (max-width: 700px) {
+    .au-header h1 { font-size: 1.45rem; }
+    .au-header p  { font-size: .82rem; }
+
+    .au-stats {
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .au-stat {
+      padding: 12px;
+    }
+
+    .au-stat-val {
+      font-size: 1.45rem;
+    }
+
+    .au-toolbar {
+      gap: 8px;
+    }
+
+    .au-search {
+      min-width: 100%;
+      width: 100%;
+    }
+
+    .au-filter-btn {
+      font-size: .76rem;
+      padding: 7px 10px;
+    }
+
+    .au-card-head {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+      padding: 12px 14px;
+    }
+
+    .au-table,
+    .au-table tbody,
+    .au-table tr,
+    .au-table td {
+      display: block;
+      width: 100%;
+    }
+
+    .au-table thead {
+      display: none;
+    }
+
+    .au-table tr {
+      margin: 10px;
+      border: 1px solid #e8edf5;
+      border-radius: 10px;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    .au-table td {
+      border-top: 1px solid #f3f6fb;
+      padding: 10px 12px;
+    }
+
+    .au-table td:first-child {
+      border-top: none;
+    }
+
+    .au-table td[data-label]::before {
+      content: attr(data-label);
+      display: block;
+      font-size: .68rem;
+      font-weight: 700;
+      color: #6b7791;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: 4px;
+    }
+
+    .au-user-cell {
+      align-items: flex-start;
+    }
+
+    .au-role-select,
+    .au-save-btn {
+      width: 100%;
+      min-height: 38px;
+    }
+
+    .au-toast {
+      left: 12px;
+      right: 12px;
+      bottom: 94px;
+      font-size: .8rem;
+      padding: 10px 12px;
+    }
+  }
 `;
 
 const ROLES = ['admin', 'personnel', 'driver', 'utilizer'];
@@ -231,7 +329,7 @@ export default function AdminUsers() {
                   return (
                     <tr key={u.id}>
                       {/* User */}
-                      <td>
+                      <td data-label="User">
                         <div className="au-user-cell">
                           <div className="au-avatar">
                             {(u.fullName || u.email || "?").charAt(0).toUpperCase()}
@@ -244,25 +342,25 @@ export default function AdminUsers() {
                       </td>
 
                       {/* Current role */}
-                      <td>
+                      <td data-label="Current Role">
                         <span className={`au-role-badge au-role-${currentRole}`}>
                           {ROLE_ICONS[currentRole]} {currentRole}
                         </span>
                       </td>
 
                       {/* Available */}
-                      <td>
+                      <td data-label="Available">
                         <span className={`au-avail-dot ${u.isAvailable ? "au-avail-yes" : "au-avail-no"}`} />
                         {u.isAvailable ? "Yes" : "No"}
                       </td>
 
                       {/* Joined */}
-                      <td style={{ color:"#5e6a85", fontSize:".78rem" }}>
+                      <td data-label="Joined" style={{ color:"#5e6a85", fontSize:".78rem" }}>
                         {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}
                       </td>
 
                       {/* Role select */}
-                      <td>
+                      <td data-label="Change Role">
                         <select
                           className="au-role-select"
                           value={selected}
@@ -277,7 +375,7 @@ export default function AdminUsers() {
                       </td>
 
                       {/* Save */}
-                      <td>
+                      <td data-label="Save">
                         <button
                           className={`au-save-btn ${!changed ? "saved" : ""}`}
                           disabled={!changed || saving[u.id]}

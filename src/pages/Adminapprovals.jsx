@@ -83,9 +83,33 @@ const css = `
     .ap-stats { grid-template-columns:repeat(2,1fr); }
     .ap-root  { padding:16px; }
   }
+
+  .ap-root.driver-only .ap-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .ap-root.driver-only .ap-card-title::before {
+    content: 'Driver Queue';
+    display: inline-block;
+    margin-right: 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #1A6EFF;
+    background: #eff5ff;
+    border-radius: 999px;
+    padding: 2px 8px;
+    vertical-align: middle;
+  }
+
+  @media (max-width: 700px) {
+    .ap-root.driver-only .ap-stats {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+  }
 `;
 
-export default function AdminApprovals() {
+export default function AdminApprovals({ driverOnly = false }) {
   const [tab,       setTab]       = useState("drivers");
   const [drivers,   setDrivers]   = useState([]);
   const [utilizers, setUtilizers] = useState([]);
@@ -99,12 +123,18 @@ export default function AdminApprovals() {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [dRes, uRes] = await Promise.all([
-        getPendingDrivers(),
-        api.get("/api/utilizers/pending"),
-      ]);
-      setDrivers(dRes.data);
-      setUtilizers(uRes.data);
+      if (driverOnly) {
+        const dRes = await getPendingDrivers();
+        setDrivers(dRes.data);
+        setUtilizers([]);
+      } else {
+        const [dRes, uRes] = await Promise.all([
+          getPendingDrivers(),
+          api.get("/api/utilizers/pending"),
+        ]);
+        setDrivers(dRes.data);
+        setUtilizers(uRes.data);
+      }
     } catch (err) {
       showToast("❌ Failed to load applications");
     } finally {
@@ -154,12 +184,15 @@ export default function AdminApprovals() {
   return (
     <>
       <style>{css}</style>
-      <div className="ap-root">
+      <div className={`ap-root ${driverOnly ? "driver-only" : ""}`}>
 
         {/* HEADER */}
         <div className="ap-header">
-          <h1>Approvals</h1>
-          <p>Review and approve driver and utilizer station applications</p>
+          <h1>{driverOnly ? "Driver Approvals" : "Approvals"}</h1>
+          <p>{driverOnly
+            ? "Review and approve driver applications"
+            : "Review and approve driver and utilizer station applications"}
+          </p>
         </div>
 
         {/* STATS */}
@@ -172,10 +205,12 @@ export default function AdminApprovals() {
             <div className="ap-stat-label">🚛 Drivers waiting</div>
             <div className="ap-stat-val">{drivers.length}</div>
           </div>
-          <div className="ap-stat pending">
-            <div className="ap-stat-label">♻️ Utilizers waiting</div>
-            <div className="ap-stat-val">{utilizers.length}</div>
-          </div>
+          {!driverOnly && (
+            <div className="ap-stat pending">
+              <div className="ap-stat-label">♻️ Utilizers waiting</div>
+              <div className="ap-stat-val">{utilizers.length}</div>
+            </div>
+          )}
           <div className="ap-stat approved">
             <div className="ap-stat-label">✅ Auto role update</div>
             <div className="ap-stat-val">On</div>
@@ -183,17 +218,19 @@ export default function AdminApprovals() {
         </div>
 
         {/* TABS */}
-        <div className="ap-tabs">
-          <button className={`ap-tab ${tab === "drivers" ? "active" : ""}`} onClick={() => setTab("drivers")}>
-            🚛 Drivers ({drivers.length})
-          </button>
-          <button className={`ap-tab ${tab === "utilizers" ? "active" : ""}`} onClick={() => setTab("utilizers")}>
-            ♻️ Utilizers ({utilizers.length})
-          </button>
-        </div>
+        {!driverOnly && (
+          <div className="ap-tabs">
+            <button className={`ap-tab ${tab === "drivers" ? "active" : ""}`} onClick={() => setTab("drivers")}>
+              🚛 Drivers ({drivers.length})
+            </button>
+            <button className={`ap-tab ${tab === "utilizers" ? "active" : ""}`} onClick={() => setTab("utilizers")}>
+              ♻️ Utilizers ({utilizers.length})
+            </button>
+          </div>
+        )}
 
         {/* DRIVERS TABLE */}
-        {tab === "drivers" && (
+        {(driverOnly || tab === "drivers") && (
           <div className="ap-card">
             <div className="ap-card-head">
               <span className="ap-card-title">Driver Applications</span>
@@ -321,7 +358,7 @@ export default function AdminApprovals() {
         )}
 
         {/* UTILIZERS TABLE */}
-        {tab === "utilizers" && (
+        {!driverOnly && tab === "utilizers" && (
           <div className="ap-card">
             <div className="ap-card-head">
               <span className="ap-card-title">Utilizer Station Applications</span>

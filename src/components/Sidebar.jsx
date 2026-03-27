@@ -77,53 +77,40 @@ const css = `
   .sb-logout-label{font-size:.82rem;font-weight:600;color:#f87171;opacity:0;transition:opacity .15s;}
   .sb-root.expanded .sb-logout-label{opacity:1;transition:opacity .2s .08s;}
 
-  .mobile-shell .sb-root,
-  .mobile-shell .sb-root.expanded {
+  .mobile-shell .sb-mobile-hover-area {
     position: absolute;
     left: 0;
-    right: auto;
-    transform: none;
-    top: 0;
+    right: 0;
     bottom: 0;
-    width: 74px;
-    min-width: 74px;
-    max-width: 74px;
-    height: 100%;
-    border-right: 1px solid rgba(255,255,255,.08);
-    border-top: none;
-    z-index: 500;
-    transform: translateX(-100%);
-    opacity: 0;
-    pointer-events: none;
-    transition: transform .22s ease, opacity .22s ease;
-  }
-
-  .mobile-shell .sb-mobile-hover-area.open .sb-root,
-  .mobile-shell .sb-mobile-hover-area.open .sb-root.expanded {
-    transform: translateX(0);
-    opacity: 1;
+    top: auto;
+    width: 100%;
+    height: 76px;
+    z-index: 650;
     pointer-events: auto;
   }
 
   .mobile-shell .sb-mobile-trigger {
-    display: block;
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 14px;
-    background: transparent;
-    z-index: 650;
-    cursor: e-resize;
+    display: none !important;
   }
 
-  .mobile-shell .sb-mobile-hover-area {
+  .mobile-shell .sb-root,
+  .mobile-shell .sb-root.expanded {
     position: absolute;
     left: 0;
-    top: 0;
+    right: 0;
     bottom: 0;
-    width: 74px;
+    top: auto;
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    height: 76px;
+    border-right: none;
+    border-top: 1px solid rgba(255,255,255,.12);
     z-index: 650;
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+    transition: none;
   }
 
   .mobile-shell .sb-logo,
@@ -136,19 +123,22 @@ const css = `
   }
 
   .mobile-shell .sb-nav {
-    width: 74px;
-    flex-direction: column;
-    align-items: stretch;
+    width: 100%;
+    height: 100%;
+    flex-direction: row;
+    align-items: center;
     justify-content: flex-start;
-    overflow-x: hidden;
-    overflow-y: auto;
-    padding: 6px 0;
-    gap: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 8px max(8px, env(safe-area-inset-bottom));
+    gap: 4px;
+    scrollbar-width: none;
   }
+  .mobile-shell .sb-nav::-webkit-scrollbar { display: none; }
 
   .mobile-shell .sb-link {
-    min-width: 0;
-    height: 58px;
+    min-width: 68px;
+    height: 56px;
     flex: 0 0 auto;
     display: flex;
     flex-direction: column;
@@ -174,23 +164,58 @@ const css = `
   .mobile-shell .sb-link-label,
   .mobile-shell .sb-root.expanded .sb-link-label {
     opacity: 1;
-    font-size: .56rem;
+    font-size: .58rem;
     line-height: 1.1;
     text-align: center;
-    max-width: 64px;
+    max-width: 66px;
     white-space: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
   }
 
   .mobile-shell .sb-link.active::before {
-    left: 0;
-    right: auto;
-    top: 10px;
-    bottom: 10px;
-    width: 3px;
-    height: auto;
-    border-radius: 0 3px 3px 0;
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: 2px;
+    width: auto;
+    height: 3px;
+    border-radius: 3px;
+  }
+
+  .sb-mobile-logout {
+    display: none;
+  }
+
+  .mobile-shell .sb-mobile-logout {
+    display: inline-flex;
+    min-width: 68px;
+    height: 56px;
+    border: none;
+    background: transparent;
+    color: rgba(255,255,255,.55);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    cursor: pointer;
+    font-family: inherit;
+    padding: 0 2px;
+    border-radius: 10px;
+  }
+  .mobile-shell .sb-mobile-logout:hover {
+    background: rgba(239,68,68,.12);
+    color: #f87171;
+  }
+  .mobile-shell .sb-mobile-logout .sb-link-label {
+    opacity: 1;
+    font-size: .58rem;
+    line-height: 1.1;
+    text-align: center;
+    max-width: 66px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
   }
 `;
 
@@ -208,8 +233,9 @@ const NAV = {
       { to: "/dashboard/routes-history", label: "Route History", icon: "route" },
     ]},
     { section: "Administration", items: [
+      { to: "/dashboard/approvals",      label: "Approvals",      icon: "shield" },
       { to: "/dashboard/admin/dispatch", label: "Dispatch",        icon: "truck"  },
-      { to: "/dashboard/admin/drivers",  label: "Driver Approvals",icon: "shield" },
+      { to: "/dashboard/driver-approvals",  label: "Driver Approvals",icon: "users" },
       { to: "/dashboard/admin/users",    label: "Users & Roles",   icon: "users"  },
     ]},
     { section: "Account", items: [
@@ -284,7 +310,6 @@ function SbIcon({ name, className = "sb-icon" }) {
 export default function Sidebar() {
   const location = useLocation();
   const [open, setOpen] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   const role     = sessionStorage.getItem("mw_role")  || "personnel";
   const name     = sessionStorage.getItem("mw_name")  || "User";
@@ -304,9 +329,7 @@ export default function Sidebar() {
     <>
       <style>{css}</style>
       <div
-        className={`sb-mobile-hover-area ${mobileOpen ? "open" : ""}`}
-        onMouseEnter={() => setMobileOpen(true)}
-        onMouseLeave={() => setMobileOpen(false)}
+        className="sb-mobile-hover-area"
       >
         <div className="sb-mobile-trigger" />
         <div className={`sb-root ${open ? "expanded" : ""}`}
@@ -334,6 +357,10 @@ export default function Sidebar() {
               ))}
             </React.Fragment>
           ))}
+          <button className="sb-mobile-logout" onClick={handleLogout}>
+            <span className="sb-icon-wrap"><SbIcon name="logout" /></span>
+            <span className="sb-link-label">Logout</span>
+          </button>
         </nav>
 
         <div className="sb-user">
