@@ -33,16 +33,16 @@ const User = sequelize.define('User', {
   },
   plateNumber:  { type: DataTypes.STRING(20),  allowNull: true },
   vehicleModel: { type: DataTypes.STRING(100), allowNull: true },
+  phone:      { type: DataTypes.STRING(20),  allowNull: true },
+  department: { type: DataTypes.STRING(100), allowNull: true },
   lastLat:      { type: DataTypes.DOUBLE,      allowNull: true },
   lastLon:      { type: DataTypes.DOUBLE,      allowNull: true },
 }, {
-  }, {
-  tableName:  'users',
+  tableName: 'users',
   freezeTableName: true,
   timestamps: true,
-  createdAt:  'createdAt',
-  updatedAt:  false,
-  hooks: {},
+  createdAt: 'createdAt',
+  updatedAt: false,
 });
 
 module.exports = User;

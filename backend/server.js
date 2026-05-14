@@ -1,10 +1,11 @@
+const path       = require('path');
 const express    = require('express');
 const http       = require('http');
 const cors       = require('cors');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-const { connectPostgres, connectMongo, connectRedis } = require('./config/db');
-const { initSocket } = require('./services/socket');
+const { connectPostgres, connectRedis } = require('./config/db');
+const { initSocket } = require('./services/Socket');
 
 const app    = express();
 const server = http.createServer(app); // ← http server для Socket.io
@@ -19,7 +20,6 @@ app.use(express.json());
 
 // ── Connect all databases ─────────────────────────────────────
 connectPostgres();
-connectMongo();
 connectRedis();
 
 // ── Init Socket.io ────────────────────────────────────────────
@@ -31,6 +31,7 @@ app.get('/', (req, res) => res.send('MedWaste API is running...'));
 app.use('/api/auth',          require('./routes/auth'));
 app.use('/api/telemetry',     require('./routes/telemetry'));
 app.use('/api/bins',          require('./routes/bins'));
+app.use('/api/reports',       require('./routes/reports'));
 app.use('/api/alerts',        require('./routes/alerts'));
 app.use('/api/drivers',       require('./routes/drivers'));
 app.use('/api/utilizers',     require('./routes/utilizers'));

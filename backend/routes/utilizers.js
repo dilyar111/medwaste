@@ -1,7 +1,7 @@
 const router   = require('express').Router();
 const Utilizer = require('../models/pg/Utilizer');
 const User     = require('../models/pg/User');
-const Notification = require('../models/Notification');
+const Notification = require('../models/pg/Notification');
 const { authenticate, isAdmin } = require('../middleware/auth');
 
 // ── POST /api/utilizers/register ─────────────────────────────

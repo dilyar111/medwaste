@@ -99,4 +99,46 @@ router.get('/me', authenticate, async (req, res) => {
   }
 });
 
+// PATCH /api/auth/me
+router.patch('/me', authenticate, async (req, res) => {
+  try {
+    const { fullName, department, phone } = req.body;
+    const user = await User.findByPk(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    if (fullName   !== undefined) user.fullName   = String(fullName).trim();
+    if (department !== undefined) user.department = department;
+    if (phone      !== undefined) user.phone      = phone;
+
+    await user.save();
+    res.json({ id: user.id, email: user.email, fullName: user.fullName, 
+               role: user.role, department: user.department, phone: user.phone });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/auth/change-password
+router.post('/change-password', authenticate, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current and new passwords are required' });
+    }
+
+    const user = await User.findByPk(req.user.userId);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user.password) return res.status(400).json({ error: 'Password is not set for this account' });
+
+    const match = await bcrypt.compare(currentPassword, user.password);
+    if (!match) return res.status(400).json({ error: 'Current password is incorrect' });
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    res.json({ ok: true, message: 'Password changed successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

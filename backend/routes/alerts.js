@@ -1,12 +1,16 @@
 const router  = require('express').Router();
-const Alert   = require('../models/Alert');
+const Alert   = require('../models/pg/Alert');
 const { authenticate } = require('../middleware/auth');
+const { withMongoId, withMongoIdList } = require('../utils/mongoCompat');
 
 // GET /api/alerts
 router.get('/', authenticate, async (req, res) => {
   try {
-    const alerts = await Alert.find().sort({ timestamp: -1 }).limit(100);
-    res.json(alerts);
+    const alerts = await Alert.findAll({
+      order: [['timestamp', 'DESC']],
+      limit: 100,
+    });
+    res.json(withMongoIdList(alerts));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -15,9 +19,10 @@ router.get('/', authenticate, async (req, res) => {
 // PATCH /api/alerts/:id/resolve
 router.patch('/:id/resolve', async (req, res) => {
   try {
-    const alert = await Alert.findByIdAndUpdate(req.params.id, { resolved: true }, { new: true });
+    const alert = await Alert.findByPk(req.params.id);
     if (!alert) return res.status(404).json({ error: 'Not found' });
-    res.json(alert);
+    await alert.update({ resolved: true });
+    res.json(withMongoId(alert));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -26,7 +31,8 @@ router.patch('/:id/resolve', async (req, res) => {
 // DELETE /api/alerts/:id
 router.delete('/:id', async (req, res) => {
   try {
-    await Alert.findByIdAndDelete(req.params.id);
+    const n = await Alert.destroy({ where: { id: req.params.id } });
+    if (!n) return res.status(404).json({ error: 'Not found' });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -37,7 +43,7 @@ router.delete('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const alert = await Alert.create(req.body);
-    res.status(201).json(alert);
+    res.status(201).json(withMongoId(alert));
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

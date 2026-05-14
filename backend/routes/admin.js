@@ -1,7 +1,7 @@
 const router       = require('express').Router();
 const Driver       = require('../models/pg/Driver');
 const Task         = require('../models/pg/Task');
-const Notification = require('../models/Notification');
+const Notification = require('../models/pg/Notification');
 const { isAdmin }  = require('../middleware/auth');
 const User         = require('../models/pg/User');
 

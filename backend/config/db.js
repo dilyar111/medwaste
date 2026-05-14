@@ -1,7 +1,7 @@
+const path          = require('path');
 const { Sequelize } = require('sequelize');
-const mongoose      = require('mongoose');
 const redis         = require('redis');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 // ── PostgreSQL ────────────────────────────────────────────────
 const sequelize = new Sequelize(process.env.POSTGRES_URI, {
@@ -11,21 +11,12 @@ const sequelize = new Sequelize(process.env.POSTGRES_URI, {
 
 async function connectPostgres() {
   try {
+    require('../models/pg');
     await sequelize.authenticate();
     await sequelize.sync({ alter: false });
     console.log('✅ PostgreSQL connected');
   } catch (err) {
     console.error('❌ PostgreSQL Error:', err.message);
-  }
-}
-
-// ── MongoDB ───────────────────────────────────────────────────
-async function connectMongo() {
-  try {
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log('✅ MongoDB connected');
-  } catch (err) {
-    console.error('❌ MongoDB Error:', err.message);
   }
 }
 
@@ -45,5 +36,4 @@ async function connectRedis() {
   }
 }
 
-// ── Export — всегда в конце файла ────────────────────────────
-module.exports = { sequelize, redisClient, connectPostgres, connectMongo, connectRedis };
+module.exports = { sequelize, redisClient, connectPostgres, connectRedis };

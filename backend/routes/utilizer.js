@@ -2,24 +2,24 @@ const router      = require('express').Router();
 const Task        = require('../models/pg/Task');
 const User        = require('../models/pg/User');
 const Container   = require('../models/pg/Container');
-const DisposalLog = require('../models/mongo/DisposalLog');
-const History     = require('../models/mongo/History');
+const DisposalLog = require('../models/pg/DisposalLog');
+const TelemetryHistory = require('../models/pg/TelemetryHistory');
 const { authenticate } = require('../middleware/auth');
+const { Op } = require('sequelize');
 
 router.use(authenticate);
 
-// ── GET /api/utilizer/incoming-tasks ─────────────────────────
-// Tasks heading to this utilization point (in_transit)
+// GET /api/utilizer/incoming-tasks
 router.get('/incoming-tasks', async (req, res) => {
   try {
     const tasks = await Task.findAll({
-      where: { 
-        status: ['in_transit', 'at_utilization'], 
-        utilizerId: req.user.userId 
+      where: {
+        status: ['in_transit', 'at_utilization'],
+        utilizerId: req.user.userId,
       },
       include: [
         { model: Container, as: 'container' },
-        { model: User,      as: 'driver', attributes: ['id', 'email'] },
+        { model: User, as: 'driver', attributes: ['id', 'email'] },
       ],
       order: [['assignedAt', 'DESC']],
     });
@@ -29,8 +29,7 @@ router.get('/incoming-tasks', async (req, res) => {
   }
 });
 
-// ── PATCH /api/utilizer/accept-waste/:taskId ─────────────────
-// Utilizer confirms waste arrived → status: at_utilization
+// PATCH /api/utilizer/accept-waste/:taskId
 router.patch('/accept-waste/:taskId', async (req, res) => {
   try {
     const task = await Task.findByPk(req.params.taskId);
@@ -39,15 +38,14 @@ router.patch('/accept-waste/:taskId', async (req, res) => {
       return res.status(403).json({ message: 'Not assigned to you' });
     }
 
-    await task.update({ status: 'at_utilization', arrivedAt: new Date() });
+    await task.update({ status: 'at_utilization' });
     res.json({ message: 'Waste accepted for processing', task });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ── PATCH /api/utilizer/complete-process/:taskId ─────────────
-// Utilizer finishes — writes to PostgreSQL + logs to MongoDB
+// PATCH /api/utilizer/complete-process/:taskId
 router.patch('/complete-process/:taskId', async (req, res) => {
   try {
     const { weightKg = 0, method = 'incineration', notes = '' } = req.body;
@@ -55,34 +53,33 @@ router.patch('/complete-process/:taskId', async (req, res) => {
     const task = await Task.findByPk(req.params.taskId, {
       include: [{ model: Container, as: 'container' }],
     });
-    if (!task) return res.status(404).json({ message: 'Task not found' });   
+    if (!task) return res.status(404).json({ message: 'Task not found' });
 
-    // Добавь сюда:
     if (task.status !== 'at_utilization') {
       return res.status(400).json({ message: 'Accept waste first before completing' });
     }
 
-    // 1. Update task in PostgreSQL
     await task.update({ status: 'completed', completedAt: new Date() });
 
-    // 2. Free up driver and utilizer in PostgreSQL
     await User.update({ isAvailable: true }, { where: { id: task.driverId } });
     await User.update({ isAvailable: true }, { where: { id: task.utilizerId } });
 
-    // 3. Get last telemetry reading from MongoDB
-    const lastReading = await History
-      .findOne({ binId: task.container?.qrCode })
-      .sort({ timestamp: -1 });
+    const qr = task.container?.qrCode;
+    const lastReading = qr
+      ? await TelemetryHistory.findOne({
+          where: { binId: qr },
+          order: [['timestamp', 'DESC']],
+        })
+      : null;
 
-    // 4. Write final destruction log to MongoDB
     const log = await DisposalLog.create({
-      taskId:      task.id,
+      taskId: task.id,
       containerId: task.containerId,
-      driverId:    task.driverId,
-      utilizerId:  task.utilizerId,
-      wasteType:   task.container?.wasteType,
+      driverId: task.driverId,
+      utilizerId: task.utilizerId,
+      wasteType: task.container?.wasteType,
       weightKg,
-      fullness:    lastReading?.fullness ?? null,
+      fullness: lastReading ? lastReading.fullness : null,
       method,
       notes,
       completedAt: new Date(),
@@ -98,8 +95,7 @@ router.patch('/complete-process/:taskId', async (req, res) => {
   }
 });
 
-// ── GET /api/utilizer/history ─────────────────────────────────
-// Completed tasks for this utilizer + matching MongoDB logs
+// GET /api/utilizer/history
 router.get('/history', async (req, res) => {
   try {
     const tasks = await Task.findAll({
@@ -109,12 +105,13 @@ router.get('/history', async (req, res) => {
       limit: 50,
     });
 
-    // Enrich with MongoDB disposal logs
-    const taskIds = tasks.map(t => t.id);
-    const logs    = await DisposalLog.find({ taskId: { $in: taskIds } });
-    const logsMap = Object.fromEntries(logs.map(l => [l.taskId, l]));
+    const taskIds = tasks.map((t) => t.id);
+    const logs = await DisposalLog.findAll({
+      where: { taskId: { [Op.in]: taskIds } },
+    });
+    const logsMap = Object.fromEntries(logs.map((l) => [l.taskId, l]));
 
-    const result = tasks.map(t => ({
+    const result = tasks.map((t) => ({
       ...t.toJSON(),
       disposalLog: logsMap[t.id] || null,
     }));

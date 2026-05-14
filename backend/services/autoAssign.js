@@ -23,6 +23,9 @@ async function autoAssignDriver(containerId, fullness = 0) {
   const drivers = await User.findAll({
     where: { role: 'driver', isAvailable: true },
   });
+  console.log(`👥 Available drivers:`, drivers.map(d => ({ id: d.id, email: d.email })));
+  // Замени строку с консоль-логом на эту:
+  console.log(`👥 Found in DB: ${drivers.length} drivers`);
   if (drivers.length === 0) {
     console.warn('⚠️ No available drivers');
     return null;
@@ -44,6 +47,7 @@ async function autoAssignDriver(containerId, fullness = 0) {
     }
   }
   const driverRecord = await Driver.findOne({ where: { userId: chosen.id, status: 'approved' } });
+  console.log(`🔍 Looking for driver: userId=${chosen.id}, found=${JSON.stringify(driverRecord?.dataValues)}`);
   if (!driverRecord) {
     console.warn(`⚠️ No driver record for user ${chosen.email}`);
     return null;
@@ -59,6 +63,7 @@ async function autoAssignDriver(containerId, fullness = 0) {
   await chosen.update({ isAvailable: false });
   console.log(`✅ Auto-assigned driver ${chosen.email} to ${container.qrCode}`);
 
+  
   // 📧 Email notification to driver
   await sendTaskAssignedEmail(
     chosen.email,
@@ -70,6 +75,7 @@ async function autoAssignDriver(containerId, fullness = 0) {
 
   return task;
 }
+
 
 async function autoAssignUtilizer(taskId) {
   const task = await Task.findByPk(taskId);

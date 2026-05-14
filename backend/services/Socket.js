@@ -1,6 +1,5 @@
 const { Server } = require('socket.io');
 const jwt        = require('jsonwebtoken');
-const History    = require('../models/mongo/History');
 
 const SECRET = process.env.JWT_SECRET || 'supersecretkey';
 

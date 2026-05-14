@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # Редис — ставим его в начало или просто добавляем в зависимости
+  redis:
+    image: redis:alpine
+    container_name: medvault-redis
+    restart: always
+    # Порты можно не пробрасывать наружу, если работаешь только внутри Docker
+
+  # База данных
+  db:
+    platform: linux/amd64
+    image: postgres:15-alpine
+    container_name: medvault-db
+    environment:
+      - POSTGRES_USER=dilyarabaizova
+      - POSTGRES_PASSWORD=asdasd
+      - POSTGRES_DB=medvault_db
+    ports:
+      - "5433:5432" 
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    restart: always
+
+  # Твой ИИ модуль (Python)
+  ai_module:
+    build: ./ai_module
+    container_name: medvault-ai
+    # Если на Mac M1/M2/M3 ошибка сборки, раскомментируй строку ниже:
+    # platform: linux/amd64
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+
+  # Твой бэкенд (Node.js)
+  backend:
+    build: ./backend
+    container_name: medvault-backend
+    environment:
+      - REDIS_HOST=medvault-redis  # Должно совпадать с именем сервиса выше!
+      - DB_HOST=medvault-db        # Чтобы бэкенд видел базу по имени
+    ports:
+      - "5000:5000"
+    env_file: .env
+    depends_on:
+      - db
+      - redis
+      - ai_module
+
+  # Фронтенд (Vite)
+  frontend:
+    build: ./frontend
+    container_name: medvault-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  pg_data:
